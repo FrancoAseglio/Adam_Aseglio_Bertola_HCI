@@ -2,14 +2,14 @@
 
 ## Setup Instructions
 
-### Option 1: With Poetry (Mac users or if you have Poetry installed)
+### Option 1: With Poetry
 
 ```bash
 # Install dependencies
 poetry install
 ```
 
-### Option 2: Without Poetry (Ubuntu/Windows users)
+### Option 2: Without Poetry
 
 ```bash
 # Create virtual environment
@@ -31,6 +31,7 @@ pip install -r requirements.txt
 .
 ├── notebooks/       # Jupyter notebooks
 ├── utils/           # User defined utility functions
+├── report/          # Report documentation
 ├── poetry.lock      # Poetry lock file
 ├── pyproject.toml   # Poetry dependencies (for Poetry users)
 ├── README.md
