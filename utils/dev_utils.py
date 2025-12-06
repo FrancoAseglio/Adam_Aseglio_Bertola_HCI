@@ -1,6 +1,7 @@
 import pandas as pd
 import re
 import warnings
+warnings.filterwarnings("ignore", category=UserWarning)
 from typing import List
 
 
@@ -59,42 +60,6 @@ def quick_profile(df: pd.DataFrame, name: str) -> None:
     print(f"n_dupes   = {dupes}")
 
 
-def add_count_on_bars(ax, fontsize: int = 9, offset: int = 5) -> None:
-    """
-    Add count labels on top of bar chart bars.
-
-    Labels are centered above each bar showing the bar's height as an integer.
-    Zero-height bars are skipped.
-
-    Parameters
-    ----------
-    ax : matplotlib.axes.Axes
-        Matplotlib axes object containing the bar chart.
-    fontsize : int, optional
-        Font size for the count labels, by default 9.
-    offset : int, optional
-        Vertical offset in points for label placement, by default 5.
-
-    Returns
-    -------
-    None
-        Modifies the axes object in place by adding annotations.
-    """
-    for patch in ax.patches:
-        height = patch.get_height()
-        if height != 0:  # Skip zero-height bars
-            ax.annotate(
-                f"{int(height)}",
-                (patch.get_x() + patch.get_width() / 2.0, height),
-                ha="center",
-                va="bottom",
-                fontsize=fontsize,
-                color="black",
-                xytext=(0, offset),
-                textcoords="offset points",
-            )
-
-
 def downcast_df(df: pd.DataFrame, inplace: bool = False) -> pd.DataFrame:
     """
     Optimize a DataFrame by downcasting numeric types and converting columns.
@@ -138,18 +103,12 @@ def downcast_df(df: pd.DataFrame, inplace: bool = False) -> pd.DataFrame:
                 continue
 
             # Attempt datetime conversion (only if column name suggests dates)
-            # This is much faster than trying on every object column
-            if any(
-                date_hint in col.lower()
-                for date_hint in ["date", "time", "timestamp", "dt"]
-            ):
-                with warnings.catch_warnings():
-                    warnings.simplefilter("ignore")
-                    converted = pd.to_datetime(col_series, errors="coerce")
-                    valid_count = converted.notna().sum()
-                    if valid_count / len(df) > 0.8:
-                        df[col] = converted
-                        continue
+            if any(date_hint in col.lower() for date_hint in ["date", "time", "timestamp", "dt"]):
+                converted = pd.to_datetime(col_series, errors="coerce")
+                valid_count = converted.notna().sum()
+                if valid_count / len(df) > 0.8:
+                  df[col] = converted
+                  continue
 
             # Convert to category if low cardinality
             n_unique = col_series.nunique(dropna=True)
@@ -212,6 +171,42 @@ def parse_list_series(series: pd.Series) -> pd.Series:
         return pattern.findall(s)
 
     return pd.Series(series.apply(parse_item), index=series.index)
+
+
+def add_count_on_bars(ax, fontsize: int = 9, offset: int = 5) -> None:
+    """
+    Add count labels on top of bar chart bars.
+
+    Labels are centered above each bar showing the bar's height as an integer.
+    Zero-height bars are skipped.
+
+    Parameters
+    ----------
+    ax : matplotlib.axes.Axes
+        Matplotlib axes object containing the bar chart.
+    fontsize : int, optional
+        Font size for the count labels, by default 9.
+    offset : int, optional
+        Vertical offset in points for label placement, by default 5.
+
+    Returns
+    -------
+    None
+        Modifies the axes object in place by adding annotations.
+    """
+    for patch in ax.patches:
+        height = patch.get_height()
+        if height != 0:  # Skip zero-height bars
+            ax.annotate(
+                f"{int(height)}",
+                (patch.get_x() + patch.get_width() / 2.0, height),
+                ha="center",
+                va="bottom",
+                fontsize=fontsize,
+                color="black",
+                xytext=(0, offset),
+                textcoords="offset points",
+            )
 
 
 def memory_usage_check(df: pd.DataFrame, detailed: bool = False) -> None:
