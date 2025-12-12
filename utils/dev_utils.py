@@ -176,7 +176,6 @@ def parse_list_series(series: pd.Series) -> pd.Series:
 def add_count_on_bars(ax, fontsize: int = 9, offset: int = 5) -> None:
     """
     Add count labels on top of bar chart bars.
-
     Labels are centered above each bar showing the bar's height as an integer.
     Zero-height bars are skipped.
 
@@ -194,19 +193,24 @@ def add_count_on_bars(ax, fontsize: int = 9, offset: int = 5) -> None:
     None
         Modifies the axes object in place by adding annotations.
     """
+    max_height = 0
+
     for patch in ax.patches:
         height = patch.get_height()
-        if height != 0:  # Skip zero-height bars
+        if height != 0:
+            max_height = max(max_height, height)
             ax.annotate(
-                f"{int(height)}",
+                f"{int(height):,}",
                 (patch.get_x() + patch.get_width() / 2.0, height),
                 ha="center",
                 va="bottom",
                 fontsize=fontsize,
+                fontweight="bold",
                 color="black",
                 xytext=(0, offset),
                 textcoords="offset points",
             )
+    ax.set_ylim(0, max_height * 1.20)
 
 
 def memory_usage_check(df: pd.DataFrame, detailed: bool = False) -> None:

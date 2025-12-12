@@ -6,6 +6,8 @@ import pandas as pd
 import matplotlib.cm as cm
 import matplotlib.pylab as plt
 
+from utils.dev_utils import add_count_on_bars
+
 sys.path.append(str(Path.cwd().parent))
 
 ## Comment or uncomment the appropriate data path
@@ -15,7 +17,7 @@ INPUT_DIR_PATH = "~/datasets/cleaned/"
 ## files to read format: adapt to pd.read_format
 FILE_EXTENSION = ".csv"
 
-# character_anime_works_df = pd.read_csv(INPUT_DIR_PATH + "character_anime_works_clean" + FILE_EXTENSION)
+character_anime_works_df = pd.read_csv(INPUT_DIR_PATH + "character_anime_works_clean" + FILE_EXTENSION)
 # character_nicknames_df = pd.read_csv(INPUT_DIR_PATH + "character_nicknames_clean" + FILE_EXTENSION)
 characters_df = pd.read_csv(INPUT_DIR_PATH + "characters_clean" + FILE_EXTENSION)
 # details_df = pd.read_csv(INPUT_DIR_PATH + "details_clean" + FILE_EXTENSION)
@@ -94,3 +96,77 @@ def top_n_most_favorited_characters(top_n=10, figsize=(12, 8)):
 
     plt.tight_layout()
     return fig, ax
+
+
+def character_popularity_by_role(figsize=(14, 5)):
+    """
+    Analyze and visualize character popularity based on their role in anime.
+
+    Parameters
+    ----------
+    figsize : tuple, default=(14, 5)
+        Matplotlib figure size for the 1x2 layout.
+
+    Returns
+    -------
+    fig, axes : matplotlib Figure and Axes array
+        Side-by-side bar charts of average favorites and character counts by role.
+    """
+
+    # Compute user favorites
+    char_favs = favs_df[favs_df["fav_type"] == "character"].copy()
+    char_fav_counts = char_favs.groupby("id").size().reset_index(name="user_favs")
+
+    # Merge with character details
+    char_popularity = characters_df.merge(char_fav_counts, left_on="character_mal_id", right_on="id", how="left")
+    char_popularity["user_favs"] = char_popularity["user_favs"].fillna(0)
+    char_popularity["total_favs"] = (char_popularity["favorites"].fillna(0) + char_popularity["user_favs"])
+
+    # Merge with role dataset
+    char_roles = character_anime_works_df.merge(
+        char_popularity[["character_mal_id", "name", "total_favs"]],
+        on="character_mal_id",
+        how="inner",
+    )
+
+    # Aggregate by role
+    role_analysis = (
+        char_roles.groupby("role")
+        .agg({"total_favs": "mean", "character_mal_id": "count"})
+        .round(2)
+    )
+    role_analysis.columns = ["Avg Favorites", "Count"]
+    role_analysis = role_analysis.sort_values("Avg Favorites", ascending=False)
+
+    # --- Visualization ---
+    fig, axes = plt.subplots(1, 2, figsize=figsize)
+
+    # Average favorites
+    role_analysis["Avg Favorites"].plot(kind="bar", ax=axes[0], color=["#FF6B6B", "#4ECDC4"])
+    axes[0].set_title(
+        "Average Favorites by Character Role",
+        fontsize=12,
+        fontweight="bold",
+    )
+    axes[0].set_ylabel("Average Favorites")
+    axes[0].set_xlabel("Role")
+    axes[0].tick_params(axis="x", rotation=45)
+    axes[0].grid(axis="y", alpha=0.5, linestyle="--")
+    add_count_on_bars(axes[0])
+
+    # Count per role
+    role_analysis["Count"].plot(kind="bar", ax=axes[1], color=["#FF6B6B", "#4ECDC4"])
+    axes[1].set_title(
+        "Number of Characters by Role",
+        fontsize=12,
+        fontweight="bold",
+    )
+    axes[1].set_ylabel("Character Count")
+    axes[1].set_xlabel("Role")
+    axes[1].tick_params(axis="x", rotation=45)
+    axes[1].grid(axis="y", alpha=0.5, linestyle="--")
+    add_count_on_bars(axes[1])
+
+    plt.tight_layout()
+    return fig, axes
+
