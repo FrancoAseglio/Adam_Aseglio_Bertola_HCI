@@ -5,8 +5,9 @@ import numpy as np
 import pandas as pd
 import matplotlib.cm as cm
 import matplotlib.pylab as plt
+import plotly.graph_objects as go
 
-from utils.dev_utils import add_count_on_bars
+from utils.dev_utils import add_count_on_bars, parse_list
 
 sys.path.append(str(Path.cwd().parent))
 
@@ -20,7 +21,7 @@ FILE_EXTENSION = ".csv"
 character_anime_works_df = pd.read_csv(INPUT_DIR_PATH + "character_anime_works_clean" + FILE_EXTENSION)
 # character_nicknames_df = pd.read_csv(INPUT_DIR_PATH + "character_nicknames_clean" + FILE_EXTENSION)
 characters_df = pd.read_csv(INPUT_DIR_PATH + "characters_clean" + FILE_EXTENSION)
-# details_df = pd.read_csv(INPUT_DIR_PATH + "details_clean" + FILE_EXTENSION)
+details_df = pd.read_csv(INPUT_DIR_PATH + "details_clean" + FILE_EXTENSION)
 favs_df = pd.read_csv(INPUT_DIR_PATH + "favs_clean" + FILE_EXTENSION)
 # person_alternate_names_df = pd.read_csv(INPUT_DIR_PATH + "person_alternate_names_clean" + FILE_EXTENSION)
 # person_anime_works_df = pd.read_csv(INPUT_DIR_PATH + "person_anime_works_clean" + FILE_EXTENSION)
@@ -169,4 +170,107 @@ def character_popularity_by_role(figsize=(14, 5)):
 
     plt.tight_layout()
     return fig, axes
+
+
+def character_popularity_by_genre_bars(min_char_count=10, top_n=10, figsize=(1200, 700)):
+    """
+    Interactive horizontal bar chart showing top genres.
+    Bar length shows avg favorites, color shows character count (volume).
+
+    Parameters
+    ----------
+    min_char_count : int, default=10
+        Minimum number of characters required for a genre to be included.
+    top_n : int, default=10
+        Number of top genres to display.
+    figsize : tuple, default=(1200, 700)
+        Figure size in pixels (width, height).
+
+    Returns
+    -------
+    fig : plotly.graph_objects.Figure
+        Interactive bar chart.
+    """
+
+    # Parse and explode genres
+    details_df["genres_list"] = details_df["genres"].astype(str).apply(parse_list)
+    genre_df = (
+        details_df[["mal_id", "title", "genres_list"]]
+        .explode("genres_list")
+        .query("genres_list != ''")
+    )
+
+    # Compute user favorites
+    char_favs = favs_df[favs_df["fav_type"] == "character"].copy()
+    char_fav_counts = char_favs.groupby("id").size().reset_index(name="user_favs")
+
+    # Merge with character details
+    char_popularity = characters_df.merge(char_fav_counts, left_on="character_mal_id", right_on="id", how="left")
+    char_popularity["user_favs"] = char_popularity["user_favs"].fillna(0)
+    char_popularity["total_favs"] = (char_popularity["favorites"].fillna(0) + char_popularity["user_favs"])
+
+    # Merge character-anime works with genres
+    char_genre = character_anime_works_df.merge(
+        genre_df, left_on="anime_mal_id", right_on="mal_id", how="inner"
+    ).merge(
+        char_popularity[["character_mal_id", "name", "total_favs"]],
+        on="character_mal_id",
+        how="inner",
+    )
+
+    # Aggregate by genre
+    genre_analysis = (
+        char_genre.groupby("genres_list")
+        .agg({"total_favs": ["mean", "sum"], "character_mal_id": "count"})
+        .round(2)
+    )
+    genre_analysis.columns = ["Avg Favorites", "Total Favorites", "Character Count"]
+    genre_analysis = genre_analysis[genre_analysis["Character Count"] >= min_char_count]
+
+    # Get top N genres
+    plot_df = genre_analysis.reset_index().rename(columns={"genres_list": "Genre"})
+    plot_df = plot_df.nlargest(top_n, "Avg Favorites")
+
+    # --- Visualization ---
+    fig = go.Figure()
+
+    # Add horizontal bar chart colored by character count
+    fig.add_trace(
+        go.Bar(
+            y=plot_df["Genre"],
+            x=plot_df["Avg Favorites"],
+            name="Avg Favorites",
+            orientation="h",
+            marker=dict(
+                color=plot_df["Character Count"],
+                colorscale="Viridis",
+                showscale=True,
+                colorbar=dict(title="Character<br>Count"),
+            ),
+            text=plot_df["Avg Favorites"].apply(lambda x: f"{x:,.0f}"),
+            textposition="outside",
+            hovertemplate="<b>%{y}</b><br>"
+            + "Avg Favorites: %{x:,.2f}<br>"
+            + "Character Count: %{customdata[0]:,}<br>"
+            + "Total Favorites: %{customdata[1]:,}<br>"
+            + "<extra></extra>",
+            customdata=plot_df[["Character Count", "Total Favorites"]].values,
+        )
+    )
+
+    # Update layout
+    fig.update_layout(
+        title=f"Top {top_n} Genres by Average Character Popularity",
+        xaxis_title="Average Favorites (Efficiency)",
+        yaxis_title="Genre",
+        yaxis={"categoryorder": "total ascending"},
+        height=figsize[1],
+        width=figsize[0],
+        showlegend=False,
+        font=dict(size=12),
+        hovermode="closest",
+    )
+
+    return fig
+
 
