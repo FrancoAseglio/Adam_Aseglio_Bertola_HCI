@@ -6,14 +6,15 @@ import pandas as pd
 import matplotlib.cm as cm
 import matplotlib.pylab as plt
 import plotly.graph_objects as go
+import plotly.express as px
 
 from utils.dev_utils import add_count_on_bars, parse_list
 
 sys.path.append(str(Path.cwd().parent))
 
 ## Comment or uncomment the appropriate data path
-# INPUT_DIR_PATH = "C:\\Users\\Lorenzo\\OneDrive\\Desktop\\datasets\\cleaned\\"
-INPUT_DIR_PATH = "~/datasets/cleaned/"
+INPUT_DIR_PATH = "C:\\Users\\Lorenzo\\OneDrive\\Desktop\\datasets\\cleaned\\"
+# NPUT_DIR_PATH = "~/datasets/cleaned/"
 
 ## files to read format: adapt to pd.read_format
 FILE_EXTENSION = ".csv"
@@ -27,7 +28,7 @@ favs_df = pd.read_csv(INPUT_DIR_PATH + "favs_clean" + FILE_EXTENSION)
 # person_anime_works_df = pd.read_csv(INPUT_DIR_PATH + "person_anime_works_clean" + FILE_EXTENSION)
 # person_details_df = pd.read_csv(INPUT_DIR_PATH + "person_details_clean" + FILE_EXTENSION)
 # person_voice_works_df = pd.read_csv(INPUT_DIR_PATH + "person_voice_works_clean" + FILE_EXTENSION)
-# profiles_df = pd.read_csv(INPUT_DIR_PATH + "profiles_clean" + FILE_EXTENSION)
+profiles_df = pd.read_csv(INPUT_DIR_PATH + "profiles_clean" + FILE_EXTENSION)
 # ratings_df = pd.read_csv(INPUT_DIR_PATH + "ratings_clean" + FILE_EXTENSION)
 # recommendations_df = pd.read_csv(INPUT_DIR_PATH + "recommendations_clean" + FILE_EXTENSION)
 # stats_df = pd.read_csv(INPUT_DIR_PATH + "stats_clean" + FILE_EXTENSION)
@@ -273,4 +274,147 @@ def character_popularity_by_genre_bars(min_char_count=10, top_n=10, figsize=(120
 
     return fig
 
+# ========================================
+# GLOBAL ANIME USERS MAP FUNCTIONS
+# ========================================
 
+def load_and_prepare_profiles():
+    """
+    Load profiles dataset and prepare it for analysis by adding the year_label column.
+    
+    Returns:
+    --------
+    pd.DataFrame
+        Profiles dataframe with year_label column added
+    """
+    profiles_df = pd.read_csv(INPUT_DIR_PATH + "profiles_clean" + FILE_EXTENSION)
+    profiles_df['year_label'] = pd.to_datetime(profiles_df['joined'], errors='coerce').dt.year
+    
+    return profiles_df
+
+
+def get_country_code(location):
+
+    if pd.isna(location):
+        return None, None
+    
+    location_str = str(location).strip()
+        
+    manual_mapping = {
+        'USA': ('United States', 'USA'),
+        'US': ('United States', 'USA'),
+        'UK': ('United Kingdom', 'GBR'),
+        'England': ('United Kingdom', 'GBR'),
+        'Scotland': ('United Kingdom', 'GBR'),
+        'Wales': ('United Kingdom', 'GBR'),
+        'Northern Ireland': ('United Kingdom', 'GBR'),
+        'United States': ('United States', 'USA'),
+        'United Kingdom': ('United Kingdom', 'GBR'),
+        'Korea': ('South Korea', 'KOR'),
+        'Republic of Korea': ('South Korea', 'KOR'),
+        'South Korea': ('South Korea', 'KOR'),
+        'Russia': ('Russian Federation', 'RUS'),
+        'Russian Federation': ('Russian Federation', 'RUS'),
+        'Vietnam': ('Viet Nam', 'VNM'),
+        'Viet Nam': ('Viet Nam', 'VNM'),
+        'Czech Republic': ('Czechia', 'CZE'),
+        'Czechia': ('Czechia', 'CZE'),
+        'Turkey': ('Turkey', 'TUR'),
+        'China': ('China', 'CHN'),
+        'Argentina': ('Argentina', 'ARG'),
+        'Brazil': ('Brazil', 'BRA'),
+        'Chile': ('Chile', 'CHL'),
+        'Japan': ('Japan', 'JPN'),
+        'Canada': ('Canada', 'CAN'),
+        'Germany': ('Germany', 'DEU'),
+        'France': ('France', 'FRA'),
+        'Italy': ('Italy', 'ITA'),
+        'Spain': ('Spain', 'ESP'),
+        'Mexico': ('Mexico', 'MEX'),
+        'Australia': ('Australia', 'AUS'),
+        'Netherlands': ('Netherlands', 'NLD'),
+        'Poland': ('Poland', 'POL')
+    }
+    
+    if location_str in manual_mapping:
+        return manual_mapping[location_str]
+    
+    try:
+        country = pycountry.countries.get(name=location_str)
+        if country:
+            return country.name, country.alpha_3
+    except:
+        pass
+    
+    try:
+        countries = pycountry.countries.search_fuzzy(location_str)
+        if countries:
+            return countries[0].name, countries[0].alpha_3
+    except:
+        pass
+    
+    return None, None
+
+
+def prepare_country_data(profiles_df):
+    profiles_df[['country', 'country_code']] = profiles_df['location'].apply(lambda x: pd.Series(get_country_code(x)))
+    
+    profiles_with_country = profiles_df[profiles_df['country_code'].notna()].copy()
+    
+    country_year_counts = profiles_with_country.groupby(['country', 'country_code', 'year_label']).size().reset_index(name='user_count')
+    
+    country_year_counts = country_year_counts.sort_values(['country', 'year_label'])
+    country_year_counts['cumulative_users'] = country_year_counts.groupby('country')['user_count'].cumsum()
+    
+    country_year_counts['log_cumulative'] = np.log10(country_year_counts['cumulative_users'] + 1)
+    
+    return country_year_counts
+
+
+def create_animated_map(country_year_counts):
+    
+    years_sorted = sorted(country_year_counts['year_label'].unique())
+    
+    min_users_log = country_year_counts['log_cumulative'].min()
+    max_users_log = country_year_counts['log_cumulative'].max()
+    
+    fig = px.choropleth(
+        country_year_counts,
+        locations='country_code',
+        locationmode='ISO-3',  
+        color='log_cumulative',  # Uso scala logaritmica per migliore differenziazione
+        hover_name='country',
+        hover_data={
+            'country_code': False, 
+            'cumulative_users': ':,',  # Totale cumulativo (valore reale)
+            'user_count': ':,',  # Nuovi utenti dell'anno
+            'year_label': True,
+            'log_cumulative': False 
+        },
+        animation_frame='year_label',
+        color_continuous_scale='Turbo',  
+        labels={
+            'cumulative_users': 'Total Users', 
+            'user_count': 'New Users This Year',
+            'year_label': 'Year'
+        },
+        title='Global Anime Users Distribution by Year (2004-2025) - Cumulative Total (Log Scale)',
+        projection='natural earth',
+        category_orders={'year_label': years_sorted},
+        range_color=[min_users_log, max_users_log]  
+    )
+    
+    fig.update_layout(
+        height=600,
+        geo=dict(
+            showframe=False,
+            showcoastlines=True,
+            projection_type='natural earth'
+        ),
+        coloraxis_colorbar=dict(
+            title="Total Users",
+            tickformat=','
+        )
+    )
+    
+    return fig
