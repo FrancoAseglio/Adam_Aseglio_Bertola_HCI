@@ -415,6 +415,90 @@ def recommendation_genre_cooccurrence(min_recommendations=250, top_n=10, figsize
 
     return fig
 
+
+def recommendation_type_patterns(min_count=200, figsize=(1200, 600)):
+    """
+    Interactive bar chart showing what anime types get recommended together.
+    Shows the flow: Type A → Type B with recommendation counts.
+
+    Parameters
+    ----------
+    min_count : int, default=200
+        Minimum recommendation count for a type pair to be displayed.
+    figsize : tuple, default=(1200, 600)
+        Figure size in pixels (width, height).
+
+    Returns
+    -------
+    fig : plotly.graph_objects.Figure
+        Interactive grouped bar chart.
+    """
+
+    # Merge recommendations with type info
+    rec_types = recommendations_df.merge(
+        details_df[["mal_id", "type", "title"]],
+        left_on="mal_id",
+        right_on="mal_id",
+        how="inner",
+    ).merge(
+        details_df[["mal_id", "type", "title"]],
+        left_on="recommendation_mal_id",
+        right_on="mal_id",
+        how="inner",
+        suffixes=("_source", "_target"),
+    )
+
+    # Count type pairs
+    type_pairs = (
+        rec_types.groupby(["type_source", "type_target"])
+        .size()
+        .reset_index(name="count")
+    )
+
+    # Filter by minimum count
+    type_pairs = type_pairs[type_pairs["count"] >= min_count]
+
+    # Sort by count
+    type_pairs = type_pairs.sort_values("count", ascending=False)
+
+    # Create grouped bar chart
+    fig = go.Figure()
+
+    # Get unique source types
+    source_types = type_pairs["type_source"].unique()
+
+    for source_type in source_types:
+        data = type_pairs[type_pairs["type_source"] == source_type]
+
+        fig.add_trace(
+            go.Bar(
+                name=f"From {source_type}",
+                x=data["type_target"],
+                y=data["count"],
+                text=data["count"].apply(lambda x: f"{x:,}"),
+                textposition="auto",
+                hovertemplate=f"<b>{source_type} → %{{x}}</b><br>"
+                + "Recommendations: %{y:,}<br>"
+                + "<extra></extra>",
+            )
+        )
+
+    fig.update_layout(
+        title="Anime Type Recommendation Patterns",
+        xaxis_title="Recommended Type",
+        yaxis_title="Number of Recommendations (log scale)",
+        barmode="group",
+        width=figsize[0],
+        height=figsize[1],
+        legend_title="Source Type",
+        hovermode="x unified",
+    )
+
+    # Log scale helps visibility
+    fig.update_yaxes(type="log")
+
+    return fig
+
 # ========================================
 # GEOGRAPHIC DISTRIBUTION FUNCTIONS
 # ========================================
