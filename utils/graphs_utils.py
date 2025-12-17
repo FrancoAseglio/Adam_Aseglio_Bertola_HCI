@@ -1,3 +1,7 @@
+# ========================================
+# IMPORTS AND DEPENDENCIES
+# ========================================
+
 import sys
 from pathlib import Path
 
@@ -12,24 +16,37 @@ from utils.dev_utils import add_count_on_bars, parse_list
 
 sys.path.append(str(Path.cwd().parent))
 
+
+# ========================================
+# DATA LOADING
+# ========================================
+
 ## Comment or uncomment the appropriate data path
 # INPUT_DIR_PATH = "C:\\Users\\Lorenzo\\OneDrive\\Desktop\\datasets\\cleaned\\"
 INPUT_DIR_PATH = "~/datasets/cleaned/"
+FILE_EXTENSION = ".csv"
 
-character_anime_works_df = pd.read_csv(INPUT_DIR_PATH + "character_anime_works_clean.csv")
+# Core datasets
+character_anime_works_df = pd.read_csv(INPUT_DIR_PATH + "character_anime_works_clean" + FILE_EXTENSION)
+characters_df = pd.read_csv(INPUT_DIR_PATH + "characters_clean" + FILE_EXTENSION)
+details_df = pd.read_csv(INPUT_DIR_PATH + "details_clean" + FILE_EXTENSION)
+favs_df = pd.read_csv(INPUT_DIR_PATH + "favs_clean" + FILE_EXTENSION)
+profiles_df = pd.read_csv(INPUT_DIR_PATH + "profiles_clean" + FILE_EXTENSION)
+
+# Optional datasets (uncomment if needed)
 # character_nicknames_df = pd.read_csv(INPUT_DIR_PATH + "character_nicknames_clean" + FILE_EXTENSION)
-characters_df = pd.read_csv(INPUT_DIR_PATH + "characters_clean.csv")
-details_df = pd.read_csv(INPUT_DIR_PATH + "details_clean.csv")
-favs_df = pd.read_csv(INPUT_DIR_PATH + "favs_clean.csv")
-# person_alternate_names_df = pd.read_csv(INPUT_DIR_PATH + "person_alternate_names_clean.csv")
-# person_anime_works_df = pd.read_csv(INPUT_DIR_PATH + "person_anime_works_clean.csv")
-# person_details_df = pd.read_csv(INPUT_DIR_PATH + "person_details_clean.csv")
-# person_voice_works_df = pd.read_csv(INPUT_DIR_PATH + "person_voice_works_clean.csv")
-profiles_df = pd.read_csv(INPUT_DIR_PATH + "profiles_clean.csv")
-# ratings_df = pd.read_csv(INPUT_DIR_PATH + "ratings_clean.csv")
-# recommendations_df = pd.read_csv(INPUT_DIR_PATH + "recommendations_clean.csv")
-# stats_df = pd.read_csv(INPUT_DIR_PATH + "stats_clean.csv")
+# person_alternate_names_df = pd.read_csv(INPUT_DIR_PATH + "person_alternate_names_clean" + FILE_EXTENSION)
+# person_anime_works_df = pd.read_csv(INPUT_DIR_PATH + "person_anime_works_clean" + FILE_EXTENSION)
+# person_details_df = pd.read_csv(INPUT_DIR_PATH + "person_details_clean" + FILE_EXTENSION)
+# person_voice_works_df = pd.read_csv(INPUT_DIR_PATH + "person_voice_works_clean" + FILE_EXTENSION)
+# ratings_df = pd.read_csv(INPUT_DIR_PATH + "ratings_clean" + FILE_EXTENSION)
+# recommendations_df = pd.read_csv(INPUT_DIR_PATH + "recommendations_clean" + FILE_EXTENSION)
+# stats_df = pd.read_csv(INPUT_DIR_PATH + "stats_clean" + FILE_EXTENSION)
 
+
+# ========================================
+# CHARACTER ANALYSIS FUNCTIONS
+# ========================================
 
 def top_n_most_favorited_characters(top_n=10, figsize=(12, 8)):
     """
@@ -272,7 +289,7 @@ def character_popularity_by_genre_bars(min_char_count=10, top_n=10, figsize=(120
     return fig
 
 # ========================================
-# GLOBAL ANIME USERS MAP FUNCTIONS
+# GEOGRAPHIC DISTRIBUTION FUNCTIONS
 # ========================================
 
 def load_and_prepare_profiles():
@@ -486,6 +503,10 @@ def language_vs_geographic_distribution():
     
     return fig
 
+
+# ========================================
+# LANGUAGE & LOCALIZATION ANALYSIS
+# ========================================
 
 def voice_actor_character_popularity(top_n=20):
     """
