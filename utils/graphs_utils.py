@@ -429,3 +429,145 @@ def create_animated_map():
     )
     
     return fig
+
+
+def language_vs_geographic_distribution():
+    """
+    Create a bar chart showing user distribution by primary language.
+    Maps countries to their primary languages and aggregates user counts.
+    
+    Returns
+    -------
+    fig : plotly.graph_objects.Figure
+        Interactive bar chart of language distribution
+    """
+    # Define country-to-primary-language mapping for anime context
+    language_map = {
+        'United States': 'English', 'Canada': 'English', 'United Kingdom': 'English',
+        'Australia': 'English', 'New Zealand': 'English', 'Ireland': 'English',
+        'France': 'French', 'Belgium': 'French', 'Switzerland': 'French',
+        'Germany': 'German', 'Austria': 'German',
+        'Spain': 'Spanish', 'Mexico': 'Spanish', 'Argentina': 'Spanish',
+        'Brazil': 'Portuguese', 'Portugal': 'Portuguese',
+        'Italy': 'Italian', 'Japan': 'Japanese',
+        'South Korea': 'Korean', 'China': 'Chinese',
+        'Thailand': 'Thai', 'Philippines': 'English',
+        'Poland': 'Polish', 'Russia': 'Russian'
+    }
+    
+    # Load profiles data
+    profiles_temp = load_and_prepare_profiles()
+    
+    # Aggregate users by language
+    profiles_with_lang = profiles_temp.copy()
+    profiles_with_lang['language'] = profiles_with_lang['location'].map(language_map)
+    
+    language_users = profiles_with_lang.groupby('language').size().reset_index(name='total_users')
+    language_users = language_users.dropna().sort_values('total_users', ascending=False)
+    
+    # Create visualization
+    fig = go.Figure()
+    
+    fig.add_trace(go.Bar(
+        x=language_users['language'],
+        y=language_users['total_users'],
+        marker=dict(color=language_users['total_users'], colorscale='Viridis'),
+        text=language_users['total_users'],
+        textposition='auto',
+    ))
+    
+    fig.update_layout(
+        title='Anime User Distribution by Primary Language<br><sub>Does localization drive adoption?</sub>',
+        xaxis_title='Language',
+        yaxis_title='Total Users',
+        height=600,
+        showlegend=False
+    )
+    
+    return fig
+
+
+def voice_actor_character_popularity(top_n=20):
+    """
+    Analyze the correlation between voice actors and character popularity.
+    Shows if certain voice actors consistently voice popular characters.
+    
+    Parameters
+    ----------
+    top_n : int, default=20
+        Number of top voice actors to display
+    
+    Returns
+    -------
+    fig : plotly.graph_objects.Figure
+        Interactive bar chart showing voice actor correlation with character popularity
+    """
+    # Load person_voice_works data
+    person_voice_works_df = pd.read_csv(INPUT_DIR_PATH + "person_voice_works_clean" + FILE_EXTENSION)
+    person_details_df = pd.read_csv(INPUT_DIR_PATH + "person_details_clean" + FILE_EXTENSION)
+    
+    # Get character favorites
+    char_favs = favs_df[favs_df["fav_type"] == "character"].copy()
+    char_fav_counts = char_favs.groupby("id").size().reset_index(name="user_favs")
+    
+    # Merge with character dataset to get total favorites
+    char_popularity = characters_df.merge(char_fav_counts, left_on="character_mal_id", right_on="id", how="left")
+    char_popularity["user_favs"] = char_popularity["user_favs"].fillna(0)
+    char_popularity["total_favs"] = (char_popularity["favorites"].fillna(0) + char_popularity["user_favs"])
+    
+    # Merge voice actors with characters
+    voice_char = person_voice_works_df.merge(
+        char_popularity[["character_mal_id", "name", "total_favs"]], 
+        on="character_mal_id", 
+        how="inner"
+    )
+    
+    # Aggregate by voice actor (person_mal_id)
+    va_stats = voice_char.groupby("person_mal_id").agg({
+        "total_favs": ["sum", "mean", "count"]
+    }).reset_index()
+    
+    va_stats.columns = ["person_mal_id", "total_character_favs", "avg_character_favs", "num_characters"]
+    
+    # Merge with person details to get names
+    va_stats = va_stats.merge(
+        person_details_df[["person_mal_id", "name"]], 
+        on="person_mal_id", 
+        how="left"
+    )
+    
+    # Filter: only VAs with at least 3 characters voiced
+    va_stats = va_stats[va_stats["num_characters"] >= 3]
+    
+    # Sort by total character favorites
+    va_stats = va_stats.sort_values("total_character_favs", ascending=False).head(top_n)
+    
+    # Create visualization
+    fig = go.Figure()
+    
+    fig.add_trace(go.Bar(
+        y=va_stats["name"][::-1],  # Reverse for better readability
+        x=va_stats["total_character_favs"][::-1],
+        orientation='h',
+        marker=dict(
+            color=va_stats["avg_character_favs"][::-1],
+            colorscale='Plasma',
+            showscale=True,
+            colorbar=dict(title="Avg Favs<br>per Character")
+        ),
+        text=va_stats["num_characters"][::-1],
+        texttemplate='%{text} chars',
+        textposition='inside',
+        hovertemplate='<b>%{y}</b><br>Total Favorites: %{x:,}<br>Characters Voiced: %{text}<extra></extra>'
+    ))
+    
+    fig.update_layout(
+        title='Top Voice Actors by Character Popularity<br><sub>Do certain VAs consistently voice beloved characters?</sub>',
+        xaxis_title='Total Character Favorites',
+        yaxis_title='Voice Actor',
+        height=700,
+        showlegend=False,
+        hovermode='closest'
+    )
+    
+    return fig
