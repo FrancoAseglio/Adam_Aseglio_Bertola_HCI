@@ -12,10 +12,12 @@ import matplotlib.pylab as plt
 import plotly.graph_objects as go
 import plotly.express as px
 
-from utils.dev_utils import add_count_on_bars, parse_list
+from scipy.cluster.hierarchy import linkage, dendrogram
+from scipy.spatial.distance import squareform
 
 sys.path.append(str(Path.cwd().parent))
 
+from utils.dev_utils import add_count_on_bars, parse_list
 
 # ========================================
 # DATA LOADING
@@ -26,21 +28,18 @@ sys.path.append(str(Path.cwd().parent))
 INPUT_DIR_PATH = "~/datasets/cleaned/"
 FILE_EXTENSION = ".csv"
 
-# Core datasets
 character_anime_works_df = pd.read_csv(INPUT_DIR_PATH + "character_anime_works_clean" + FILE_EXTENSION)
+# character_nicknames_df = pd.read_csv(INPUT_DIR_PATH + "character_nicknames_clean" + FILE_EXTENSION)
 characters_df = pd.read_csv(INPUT_DIR_PATH + "characters_clean" + FILE_EXTENSION)
 details_df = pd.read_csv(INPUT_DIR_PATH + "details_clean" + FILE_EXTENSION)
 favs_df = pd.read_csv(INPUT_DIR_PATH + "favs_clean" + FILE_EXTENSION)
-profiles_df = pd.read_csv(INPUT_DIR_PATH + "profiles_clean" + FILE_EXTENSION)
-
-# Optional datasets (uncomment if needed)
-# character_nicknames_df = pd.read_csv(INPUT_DIR_PATH + "character_nicknames_clean" + FILE_EXTENSION)
 # person_alternate_names_df = pd.read_csv(INPUT_DIR_PATH + "person_alternate_names_clean" + FILE_EXTENSION)
 # person_anime_works_df = pd.read_csv(INPUT_DIR_PATH + "person_anime_works_clean" + FILE_EXTENSION)
 # person_details_df = pd.read_csv(INPUT_DIR_PATH + "person_details_clean" + FILE_EXTENSION)
 # person_voice_works_df = pd.read_csv(INPUT_DIR_PATH + "person_voice_works_clean" + FILE_EXTENSION)
+# profiles_df = pd.read_csv(INPUT_DIR_PATH + "profiles_clean" + FILE_EXTENSION)
 # ratings_df = pd.read_csv(INPUT_DIR_PATH + "ratings_clean" + FILE_EXTENSION)
-# recommendations_df = pd.read_csv(INPUT_DIR_PATH + "recommendations_clean" + FILE_EXTENSION)
+recommendations_df = pd.read_csv(INPUT_DIR_PATH + "recommendations_clean" + FILE_EXTENSION)
 # stats_df = pd.read_csv(INPUT_DIR_PATH + "stats_clean" + FILE_EXTENSION)
 
 
@@ -288,6 +287,134 @@ def character_popularity_by_genre_bars(min_char_count=10, top_n=10, figsize=(120
 
     return fig
 
+def recommendation_genre_cooccurrence(min_recommendations=250, top_n=10, figsize=(1000, 800)):
+    """
+    Interactive heatmap showing which anime genres get recommended together.
+
+    Parameters
+    ----------
+    min_recommendations : int, default=250
+        Minimum number of recommendations for a genre pair to be included.
+    top_n : int, default=10
+        Number of top genres to display in the matrix.
+    figsize : tuple, default=(1000, 800)
+        Figure size in pixels (width, height).
+
+    Returns
+    -------
+    fig : plotly.graph_objects.Figure
+        Interactive heatmap.
+    """
+    # Parse genres
+    details_df["genres_list"] = details_df["genres"].astype(str).apply(parse_list)
+    anime_genres = details_df[["mal_id", "title", "genres_list"]].copy()
+
+    # Merge recommendations with source and target genres
+    rec_with_genres = recommendations_df.merge(
+        anime_genres, left_on="mal_id", right_on="mal_id", how="inner"
+    ).merge(
+        anime_genres,
+        left_on="recommendation_mal_id",
+        right_on="mal_id",
+        how="inner",
+        suffixes=("_source", "_target"),
+    )
+
+    # Explode both genre lists to get all genre pairs
+    rec_exploded = (
+        rec_with_genres.assign(source_genre=rec_with_genres["genres_list_source"])
+        .explode("source_genre")
+        .assign(target_genre=lambda df: df["genres_list_target"])
+        .explode("target_genre")
+    )
+
+    # Filter out empty genres
+    rec_exploded = rec_exploded[(rec_exploded["source_genre"] != "") & (rec_exploded["target_genre"] != "")]
+
+    # Count co-occurrences
+    genre_pairs = (
+        rec_exploded.groupby(["source_genre", "target_genre"])
+        .size()
+        .reset_index(name="recommendation_count")
+    )
+
+    # Get top genres by total recommendations
+    top_genres = (
+        pd.concat(
+            [
+                genre_pairs.groupby("source_genre")["recommendation_count"].sum(),
+                genre_pairs.groupby("target_genre")["recommendation_count"].sum(),
+            ]
+        )
+        .groupby(level=0)
+        .sum()
+        .nlargest(top_n)
+        .index.tolist()
+    )
+
+    # Filter to top genres only
+    matrix_data = genre_pairs[
+        genre_pairs["source_genre"].isin(top_genres)
+        & genre_pairs["target_genre"].isin(top_genres)
+        & (genre_pairs["recommendation_count"] >= min_recommendations)
+    ]
+
+    # Create pivot table for heatmap
+    heatmap_matrix = matrix_data.pivot_table(
+        index="source_genre",
+        columns="target_genre",
+        values="recommendation_count",
+        fill_value=0,
+    )
+
+    # Reorder by similarity (hierarchical clustering)
+    if len(heatmap_matrix) > 1:
+        # Convert similarity to distance
+        dist_matrix = 1 / (heatmap_matrix + 1)
+
+        # Make symmetric
+        dist_matrix = (dist_matrix + dist_matrix.T) / 2
+
+        np.fill_diagonal(dist_matrix.values, 0)
+
+        # Cluster
+        linkage_matrix = linkage(squareform(dist_matrix), method="average")
+        dendro = dendrogram(linkage_matrix, no_plot=True)
+        order = dendro["leaves"]
+
+        # Reorder rows/columns
+        ordered_genres = heatmap_matrix.index[order].tolist()
+        heatmap_matrix = heatmap_matrix.loc[ordered_genres, ordered_genres]
+
+    # Create heatmap
+    fig = go.Figure(
+        data=go.Heatmap(
+            z=heatmap_matrix.values,
+            x=heatmap_matrix.columns,
+            y=heatmap_matrix.index,
+            colorscale="YlOrRd",
+            text=heatmap_matrix.values,
+            texttemplate="%{text:,.0f}",
+            textfont={"size": 10},
+            hovertemplate="<b>%{y}</b> → <b>%{x}</b><br>"
+            + "Recommendations: %{z:,.0f}<br>"
+            + "<extra></extra>",
+            colorbar=dict(title="Recommendation<br>Count"),
+        )
+    )
+
+    fig.update_layout(
+        title=f"Genre Co-occurrence in Recommendations (Top {top_n} Genres)",
+        xaxis_title="Recommended Genre",
+        yaxis_title="Source Genre",
+        width=figsize[0],
+        height=figsize[1],
+        font=dict(size=11),
+        xaxis=dict(tickangle=-45),
+    )
+
+    return fig
+
 # ========================================
 # GEOGRAPHIC DISTRIBUTION FUNCTIONS
 # ========================================
@@ -295,7 +422,7 @@ def character_popularity_by_genre_bars(min_char_count=10, top_n=10, figsize=(120
 def load_and_prepare_profiles():
     """
     Load profiles dataset and prepare it for analysis by adding the year_label column.
-    
+
     Returns:
     --------
     pd.DataFrame
@@ -303,7 +430,7 @@ def load_and_prepare_profiles():
     """
     profiles_df = pd.read_csv(INPUT_DIR_PATH + "profiles_clean" + FILE_EXTENSION)
     profiles_df['year_label'] = pd.to_datetime(profiles_df['joined'], errors='coerce').dt.year
-    
+
     return profiles_df
 
 
@@ -311,9 +438,9 @@ def get_country_code(location):
 
     if pd.isna(location):
         return None, None
-    
+
     location_str = str(location).strip()
-        
+
     manual_mapping = {
         'USA': ('United States', 'USA'),
         'US': ('United States', 'USA'),
@@ -349,39 +476,39 @@ def get_country_code(location):
         'Netherlands': ('Netherlands', 'NLD'),
         'Poland': ('Poland', 'POL')
     }
-    
+
     if location_str in manual_mapping:
         return manual_mapping[location_str]
-    
+
     try:
         country = pycountry.countries.get(name=location_str)
         if country:
             return country.name, country.alpha_3
     except:
         pass
-    
+
     try:
         countries = pycountry.countries.search_fuzzy(location_str)
         if countries:
             return countries[0].name, countries[0].alpha_3
     except:
         pass
-    
+
     return None, None
 
 
 def prepare_country_data(profiles_df):
     profiles_df[['country', 'country_code']] = profiles_df['location'].apply(lambda x: pd.Series(get_country_code(x)))
-    
+
     profiles_with_country = profiles_df[profiles_df['country_code'].notna()].copy()
-    
+
     country_year_counts = profiles_with_country.groupby(['country', 'country_code', 'year_label']).size().reset_index(name='user_count')
-    
+
     country_year_counts = country_year_counts.sort_values(['country', 'year_label'])
     country_year_counts['cumulative_users'] = country_year_counts.groupby('country')['user_count'].cumsum()
-    
+
     country_year_counts['log_cumulative'] = np.log10(country_year_counts['cumulative_users'] + 1)
-    
+
     return country_year_counts
 
 
@@ -402,36 +529,36 @@ def create_animated_map():
     # Creo e mostro la mappa animata
 
     years_sorted = sorted(country_year_counts['year_label'].unique())
-    
+
     min_users_log = country_year_counts['log_cumulative'].min()
     max_users_log = country_year_counts['log_cumulative'].max()
-    
+
     fig = px.choropleth(
         country_year_counts,
         locations='country_code',
-        locationmode='ISO-3',  
+        locationmode='ISO-3',
         color='log_cumulative',  # Uso scala logaritmica per migliore differenziazione
         hover_name='country',
         hover_data={
-            'country_code': False, 
+            'country_code': False,
             'cumulative_users': ':,',  # Totale cumulativo (valore reale)
             'user_count': ':,',  # Nuovi utenti dell'anno
             'year_label': True,
-            'log_cumulative': False 
+            'log_cumulative': False
         },
         animation_frame='year_label',
-        color_continuous_scale='Turbo',  
+        color_continuous_scale='Turbo',
         labels={
-            'cumulative_users': 'Total Users', 
+            'cumulative_users': 'Total Users',
             'user_count': 'New Users This Year',
             'year_label': 'Year'
         },
         title='Global Anime Users Distribution by Year (2004-2025) - Cumulative Total (Log Scale)',
         projection='natural earth',
         category_orders={'year_label': years_sorted},
-        range_color=[min_users_log, max_users_log]  
+        range_color=[min_users_log, max_users_log]
     )
-    
+
     fig.update_layout(
         height=600,
         geo=dict(
@@ -444,7 +571,7 @@ def create_animated_map():
             tickformat=','
         )
     )
-    
+
     return fig
 
 
@@ -452,7 +579,7 @@ def language_vs_geographic_distribution():
     """
     Create a bar chart showing user distribution by primary language.
     Maps countries to their primary languages and aggregates user counts.
-    
+
     Returns
     -------
     fig : plotly.graph_objects.Figure
@@ -471,20 +598,20 @@ def language_vs_geographic_distribution():
         'Thailand': 'Thai', 'Philippines': 'English',
         'Poland': 'Polish', 'Russia': 'Russian'
     }
-    
+
     # Load profiles data
     profiles_temp = load_and_prepare_profiles()
-    
+
     # Aggregate users by language
     profiles_with_lang = profiles_temp.copy()
     profiles_with_lang['language'] = profiles_with_lang['location'].map(language_map)
-    
+
     language_users = profiles_with_lang.groupby('language').size().reset_index(name='total_users')
     language_users = language_users.dropna().sort_values('total_users', ascending=False)
-    
+
     # Create visualization
     fig = go.Figure()
-    
+
     fig.add_trace(go.Bar(
         x=language_users['language'],
         y=language_users['total_users'],
@@ -492,7 +619,7 @@ def language_vs_geographic_distribution():
         text=language_users['total_users'],
         textposition='auto',
     ))
-    
+
     fig.update_layout(
         title='Anime User Distribution by Primary Language<br><sub>Does localization drive adoption?</sub>',
         xaxis_title='Language',
@@ -500,7 +627,7 @@ def language_vs_geographic_distribution():
         height=600,
         showlegend=False
     )
-    
+
     return fig
 
 
@@ -512,12 +639,12 @@ def voice_actor_character_popularity(top_n=20):
     """
     Analyze the correlation between voice actors and character popularity.
     Shows if certain voice actors consistently voice popular characters.
-    
+
     Parameters
     ----------
     top_n : int, default=20
         Number of top voice actors to display
-    
+
     Returns
     -------
     fig : plotly.graph_objects.Figure
@@ -526,46 +653,46 @@ def voice_actor_character_popularity(top_n=20):
     # Load person_voice_works data
     person_voice_works_df = pd.read_csv(INPUT_DIR_PATH + "person_voice_works_clean" + FILE_EXTENSION)
     person_details_df = pd.read_csv(INPUT_DIR_PATH + "person_details_clean" + FILE_EXTENSION)
-    
+
     # Get character favorites
     char_favs = favs_df[favs_df["fav_type"] == "character"].copy()
     char_fav_counts = char_favs.groupby("id").size().reset_index(name="user_favs")
-    
+
     # Merge with character dataset to get total favorites
     char_popularity = characters_df.merge(char_fav_counts, left_on="character_mal_id", right_on="id", how="left")
     char_popularity["user_favs"] = char_popularity["user_favs"].fillna(0)
     char_popularity["total_favs"] = (char_popularity["favorites"].fillna(0) + char_popularity["user_favs"])
-    
+
     # Merge voice actors with characters
     voice_char = person_voice_works_df.merge(
-        char_popularity[["character_mal_id", "name", "total_favs"]], 
-        on="character_mal_id", 
+        char_popularity[["character_mal_id", "name", "total_favs"]],
+        on="character_mal_id",
         how="inner"
     )
-    
+
     # Aggregate by voice actor (person_mal_id)
     va_stats = voice_char.groupby("person_mal_id").agg({
         "total_favs": ["sum", "mean", "count"]
     }).reset_index()
-    
+
     va_stats.columns = ["person_mal_id", "total_character_favs", "avg_character_favs", "num_characters"]
-    
+
     # Merge with person details to get names
     va_stats = va_stats.merge(
-        person_details_df[["person_mal_id", "name"]], 
-        on="person_mal_id", 
+        person_details_df[["person_mal_id", "name"]],
+        on="person_mal_id",
         how="left"
     )
-    
+
     # Filter: only VAs with at least 3 characters voiced
     va_stats = va_stats[va_stats["num_characters"] >= 3]
-    
+
     # Sort by total character favorites
     va_stats = va_stats.sort_values("total_character_favs", ascending=False).head(top_n)
-    
+
     # Create visualization
     fig = go.Figure()
-    
+
     fig.add_trace(go.Bar(
         y=va_stats["name"][::-1],  # Reverse for better readability
         x=va_stats["total_character_favs"][::-1],
@@ -581,7 +708,7 @@ def voice_actor_character_popularity(top_n=20):
         textposition='inside',
         hovertemplate='<b>%{y}</b><br>Total Favorites: %{x:,}<br>Characters Voiced: %{text}<extra></extra>'
     ))
-    
+
     fig.update_layout(
         title='Top Voice Actors by Character Popularity<br><sub>Do certain VAs consistently voice beloved characters?</sub>',
         xaxis_title='Total Character Favorites',
@@ -590,5 +717,5 @@ def voice_actor_character_popularity(top_n=20):
         showlegend=False,
         hovermode='closest'
     )
-    
+
     return fig
