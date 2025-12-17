@@ -13,25 +13,22 @@ from utils.dev_utils import add_count_on_bars, parse_list
 sys.path.append(str(Path.cwd().parent))
 
 ## Comment or uncomment the appropriate data path
-INPUT_DIR_PATH = "C:\\Users\\Lorenzo\\OneDrive\\Desktop\\datasets\\cleaned\\"
-# NPUT_DIR_PATH = "~/datasets/cleaned/"
+# INPUT_DIR_PATH = "C:\\Users\\Lorenzo\\OneDrive\\Desktop\\datasets\\cleaned\\"
+INPUT_DIR_PATH = "~/datasets/cleaned/"
 
-## files to read format: adapt to pd.read_format
-FILE_EXTENSION = ".csv"
-
-character_anime_works_df = pd.read_csv(INPUT_DIR_PATH + "character_anime_works_clean" + FILE_EXTENSION)
+character_anime_works_df = pd.read_csv(INPUT_DIR_PATH + "character_anime_works_clean.csv")
 # character_nicknames_df = pd.read_csv(INPUT_DIR_PATH + "character_nicknames_clean" + FILE_EXTENSION)
-characters_df = pd.read_csv(INPUT_DIR_PATH + "characters_clean" + FILE_EXTENSION)
-details_df = pd.read_csv(INPUT_DIR_PATH + "details_clean" + FILE_EXTENSION)
-favs_df = pd.read_csv(INPUT_DIR_PATH + "favs_clean" + FILE_EXTENSION)
-# person_alternate_names_df = pd.read_csv(INPUT_DIR_PATH + "person_alternate_names_clean" + FILE_EXTENSION)
-# person_anime_works_df = pd.read_csv(INPUT_DIR_PATH + "person_anime_works_clean" + FILE_EXTENSION)
-# person_details_df = pd.read_csv(INPUT_DIR_PATH + "person_details_clean" + FILE_EXTENSION)
-# person_voice_works_df = pd.read_csv(INPUT_DIR_PATH + "person_voice_works_clean" + FILE_EXTENSION)
-profiles_df = pd.read_csv(INPUT_DIR_PATH + "profiles_clean" + FILE_EXTENSION)
-# ratings_df = pd.read_csv(INPUT_DIR_PATH + "ratings_clean" + FILE_EXTENSION)
-# recommendations_df = pd.read_csv(INPUT_DIR_PATH + "recommendations_clean" + FILE_EXTENSION)
-# stats_df = pd.read_csv(INPUT_DIR_PATH + "stats_clean" + FILE_EXTENSION)
+characters_df = pd.read_csv(INPUT_DIR_PATH + "characters_clean.csv")
+details_df = pd.read_csv(INPUT_DIR_PATH + "details_clean.csv")
+favs_df = pd.read_csv(INPUT_DIR_PATH + "favs_clean.csv")
+# person_alternate_names_df = pd.read_csv(INPUT_DIR_PATH + "person_alternate_names_clean.csv")
+# person_anime_works_df = pd.read_csv(INPUT_DIR_PATH + "person_anime_works_clean.csv")
+# person_details_df = pd.read_csv(INPUT_DIR_PATH + "person_details_clean.csv")
+# person_voice_works_df = pd.read_csv(INPUT_DIR_PATH + "person_voice_works_clean.csv")
+profiles_df = pd.read_csv(INPUT_DIR_PATH + "profiles_clean.csv")
+# ratings_df = pd.read_csv(INPUT_DIR_PATH + "ratings_clean.csv")
+# recommendations_df = pd.read_csv(INPUT_DIR_PATH + "recommendations_clean.csv")
+# stats_df = pd.read_csv(INPUT_DIR_PATH + "stats_clean.csv")
 
 
 def top_n_most_favorited_characters(top_n=10, figsize=(12, 8)):
@@ -371,8 +368,22 @@ def prepare_country_data(profiles_df):
     return country_year_counts
 
 
-def create_animated_map(country_year_counts):
-    
+def create_animated_map():
+    # Carico e preparo il dataset profiles
+    profiles_df = load_and_prepare_profiles()
+
+    # Preparo i dati aggregati per paese e anno
+    country_year_counts = prepare_country_data(profiles_df)
+
+    # Statistiche sui dati
+    print("Dati aggregati:")
+    print(f"Paesi unici prima della normalizzazione: {profiles_df['location'].nunique()}")
+    print(f"Paesi unici dopo la normalizzazione: {country_year_counts['country'].nunique()}")
+    print(f"\nNumero totale di record: {len(country_year_counts)}")
+    print(f"Anni disponibili: {sorted(country_year_counts['year_label'].unique())}")
+
+    # Creo e mostro la mappa animata
+
     years_sorted = sorted(country_year_counts['year_label'].unique())
     
     min_users_log = country_year_counts['log_cumulative'].min()
