@@ -12,8 +12,8 @@ import matplotlib.pylab as plt
 import plotly.graph_objects as go
 import plotly.express as px
 
-from scipy.cluster.hierarchy import linkage, dendrogram
-from scipy.spatial.distance import squareform
+#from scipy.cluster.hierarchy import linkage, dendrogram
+#from scipy.spatial.distance import squareform
 
 sys.path.append(str(Path.cwd().parent))
 
@@ -29,18 +29,18 @@ INPUT_DIR_PATH = "~/datasets/cleaned/"
 FILE_EXTENSION = ".csv"
 
 character_anime_works_df = pd.read_csv(INPUT_DIR_PATH + "character_anime_works_clean" + FILE_EXTENSION)
-# character_nicknames_df = pd.read_csv(INPUT_DIR_PATH + "character_nicknames_clean" + FILE_EXTENSION)
+character_nicknames_df = pd.read_csv(INPUT_DIR_PATH + "character_nicknames_clean" + FILE_EXTENSION)
 characters_df = pd.read_csv(INPUT_DIR_PATH + "characters_clean" + FILE_EXTENSION)
 details_df = pd.read_csv(INPUT_DIR_PATH + "details_clean" + FILE_EXTENSION)
 favs_df = pd.read_csv(INPUT_DIR_PATH + "favs_clean" + FILE_EXTENSION)
-# person_alternate_names_df = pd.read_csv(INPUT_DIR_PATH + "person_alternate_names_clean" + FILE_EXTENSION)
-# person_anime_works_df = pd.read_csv(INPUT_DIR_PATH + "person_anime_works_clean" + FILE_EXTENSION)
-# person_details_df = pd.read_csv(INPUT_DIR_PATH + "person_details_clean" + FILE_EXTENSION)
-# person_voice_works_df = pd.read_csv(INPUT_DIR_PATH + "person_voice_works_clean" + FILE_EXTENSION)
-# profiles_df = pd.read_csv(INPUT_DIR_PATH + "profiles_clean" + FILE_EXTENSION)
+person_alternate_names_df = pd.read_csv(INPUT_DIR_PATH + "person_alternate_names_clean" + FILE_EXTENSION)
+person_anime_works_df = pd.read_csv(INPUT_DIR_PATH + "person_anime_works_clean" + FILE_EXTENSION)
+person_details_df = pd.read_csv(INPUT_DIR_PATH + "person_details_clean" + FILE_EXTENSION)
+person_voice_works_df = pd.read_csv(INPUT_DIR_PATH + "person_voice_works_clean" + FILE_EXTENSION)
+profiles_df = pd.read_csv(INPUT_DIR_PATH + "profiles_clean" + FILE_EXTENSION)
 # ratings_df = pd.read_csv(INPUT_DIR_PATH + "ratings_clean" + FILE_EXTENSION)
 recommendations_df = pd.read_csv(INPUT_DIR_PATH + "recommendations_clean" + FILE_EXTENSION)
-# stats_df = pd.read_csv(INPUT_DIR_PATH + "stats_clean" + FILE_EXTENSION)
+stats_df = pd.read_csv(INPUT_DIR_PATH + "stats_clean" + FILE_EXTENSION)
 
 
 # ========================================
@@ -803,3 +803,136 @@ def voice_actor_character_popularity(top_n=20):
     )
 
     return fig
+
+
+def top_n_most_watched_genres(top_n=10, figsize=(12, 6)):
+    """
+    Plot bar chart of most watched genres with their total viewership counts.
+    
+    Parameters:
+    -----------
+    top_n : int, default=10
+        Number of top genres to display
+    figsize : tuple, default=(12, 6)
+        Figure size (width, height)
+    
+    Returns:
+    --------
+    fig, ax : matplotlib figure and axes objects
+    """
+        
+    # Merge details with stats
+    merged = details_df.merge(stats_df, on='mal_id', how='inner')
+    
+    # Filter out rows without genres
+    merged_with_genres = merged[merged['genres'].notna()].copy()
+    
+    # Explode genres (split comma-separated genres into separate rows)
+    merged_with_genres['genres'] = merged_with_genres['genres'].str.split(', ')
+    exploded = merged_with_genres.explode('genres')
+    
+    # Calculate total viewers per genre
+    genre_stats = exploded.groupby('genres')['watching'].sum().reset_index()
+    genre_stats.columns = ['Genre', 'Total Viewers']
+    
+    # Get top N genres
+    top_genres = genre_stats.nlargest(top_n, 'Total Viewers')
+    
+    # Create figure
+    fig, ax = plt.subplots(figsize=figsize)
+    
+    # Create bar plot
+    bars = ax.barh(range(len(top_genres)), top_genres['Total Viewers'], 
+                   color=cm.plasma(np.linspace(0.2, 0.9, len(top_genres))))
+    
+    # Set labels
+    ax.set_yticks(range(len(top_genres)))
+    ax.set_yticklabels(top_genres['Genre'].values)
+    ax.set_xlabel('Total Viewers', fontsize=12, fontweight='bold')
+    ax.set_title(f'Top {top_n} Most Watched Genres', fontsize=14, fontweight='bold', pad=20)
+    
+    # Add value labels on bars
+    for i, (bar, value) in enumerate(zip(bars, top_genres['Total Viewers'])):
+        ax.text(value, i, f' {value:,.0f}', va='center', fontsize=10, fontweight='bold')
+    
+    # Invert y-axis so #1 is at top
+    ax.invert_yaxis()
+    
+    # Style
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.grid(axis='x', alpha=0.3, linestyle='--')
+    
+    plt.tight_layout()
+    
+    return fig, ax
+
+
+def top_n_most_liked_genres(top_n=10, figsize=(12, 6)):
+    """
+    Plot bar chart of most liked (favorited) genres by number of favorites.
+
+    Logic:
+    - Filter `favs_df` for entries where the favorite type is the anime itself
+    - Merge with `details_df` on anime id to obtain genres
+    - Explode genres and count how many times each genre appears in the favorites
+    - Return a horizontal bar chart of the top-N genres by favorite count
+
+    Returns:
+    --------
+    fig, ax : matplotlib Figure and Axes
+    """
+
+    # Select only anime favorites
+    anime_favs = favs_df[favs_df["fav_type"] == "anime"].copy()
+
+    # Merge favorites with anime details using the anime id
+    # In `favs_df` the id column refers to the favorited object id (anime id when fav_type=='anime')
+    merged = anime_favs.merge(details_df, left_on="id", right_on="mal_id", how="inner")
+
+    # Keep only rows with genre information
+    merged = merged[merged["genres"].notna()].copy()
+    if merged.empty:
+        fig, ax = plt.subplots(figsize=figsize)
+        ax.text(0.5, 0.5, "No anime favorites with genre data available.", ha="center", va="center")
+        ax.axis("off")
+        return fig, ax
+
+    # Explode genres into separate rows
+    merged["genres"] = merged["genres"].astype(str).str.split(', ')
+    exploded = merged.explode("genres")
+    exploded = exploded[exploded["genres"] != ""]
+
+    # Count favorites per genre (how many times an anime in that genre was favorited)
+    genre_counts = exploded["genres"].value_counts().reset_index()
+    genre_counts.columns = ["Genre", "Favorite Count"]
+
+    # Get top N genres
+    top_genres = genre_counts.head(top_n)
+
+    # Create plot
+    fig, ax = plt.subplots(figsize=figsize)
+    bars = ax.barh(
+        range(len(top_genres)),
+        top_genres["Favorite Count"],
+        color=cm.plasma(np.linspace(0.2, 0.9, len(top_genres)))
+    )
+
+    ax.set_yticks(range(len(top_genres)))
+    ax.set_yticklabels(top_genres["Genre"].values)
+    ax.set_xlabel("Favorite Count", fontsize=12, fontweight="bold")
+    ax.set_title(f"Top {top_n} Most Liked Genres", fontsize=14, fontweight="bold", pad=20)
+
+    # Add value labels
+    for i, (bar, value) in enumerate(zip(bars, top_genres["Favorite Count"])):
+        ax.text(value, i, f" {int(value):,}", va="center", fontsize=10, fontweight="bold")
+
+    # Make highest rank appear on top
+    ax.invert_yaxis()
+
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    ax.grid(axis="x", alpha=0.3, linestyle="--")
+
+    plt.tight_layout()
+    return fig, ax
