@@ -12,8 +12,8 @@ import matplotlib.pylab as plt
 import plotly.graph_objects as go
 import plotly.express as px
 
-#from scipy.cluster.hierarchy import linkage, dendrogram
-#from scipy.spatial.distance import squareform
+from scipy.cluster.hierarchy import linkage, dendrogram
+from scipy.spatial.distance import squareform
 
 sys.path.append(str(Path.cwd().parent))
 
@@ -828,7 +828,7 @@ def top_n_most_watched_genres(top_n=10, figsize=(12, 6)):
     merged_with_genres = merged[merged['genres'].notna()].copy()
     
     # Explode genres (split comma-separated genres into separate rows)
-    merged_with_genres['genres'] = merged_with_genres['genres'].str.split(', ')
+    merged_with_genres['genres'] = merged_with_genres['genres'].apply(parse_list)
     exploded = merged_with_genres.explode('genres')
     
     # Calculate total viewers per genre
@@ -899,7 +899,7 @@ def top_n_most_liked_genres(top_n=10, figsize=(12, 6)):
         return fig, ax
 
     # Explode genres into separate rows
-    merged["genres"] = merged["genres"].astype(str).str.split(', ')
+    merged['genres'] = merged['genres'].apply(parse_list)
     exploded = merged.explode("genres")
     exploded = exploded[exploded["genres"] != ""]
 
