@@ -24,8 +24,8 @@ from utils.dev_utils import add_count_on_bars, parse_list
 # ========================================
 
 ## Comment or uncomment the appropriate data path
-# INPUT_DIR_PATH = "C:\\Users\\Lorenzo\\OneDrive\\Desktop\\datasets\\cleaned\\"
-INPUT_DIR_PATH = "~/datasets/cleaned/"
+INPUT_DIR_PATH = "C:\\Users\\Lorenzo\\OneDrive\\Desktop\\datasets\\cleaned\\"
+#INPUT_DIR_PATH = "~/datasets/cleaned/"
 FILE_EXTENSION = ".csv"
 
 character_anime_works_df = pd.read_csv(INPUT_DIR_PATH + "character_anime_works_clean" + FILE_EXTENSION)
@@ -659,15 +659,19 @@ def create_animated_map():
     return fig
 
 
-def language_vs_geographic_distribution():
+def language_vs_geographic_distribution(figsize=(12, 8)):
     """
     Create a bar chart showing user distribution by primary language.
     Maps countries to their primary languages and aggregates user counts.
 
+    Parameters
+    ----------
+    figsize : tuple, default=(12, 8)
+        Figure size (width, height)
+
     Returns
     -------
-    fig : plotly.graph_objects.Figure
-        Interactive bar chart of language distribution
+    fig, ax : matplotlib figure and axes objects
     """
     # Define country-to-primary-language mapping for anime context
     language_map = {
@@ -693,33 +697,37 @@ def language_vs_geographic_distribution():
     language_users = profiles_with_lang.groupby('language').size().reset_index(name='total_users')
     language_users = language_users.dropna().sort_values('total_users', ascending=False)
 
-    # Create visualization
-    fig = go.Figure()
+    # Create figure
+    fig, ax = plt.subplots(figsize=figsize)
 
-    fig.add_trace(go.Bar(
-        x=language_users['language'],
-        y=language_users['total_users'],
-        marker=dict(color=language_users['total_users'], colorscale='Viridis'),
-        text=language_users['total_users'],
-        textposition='auto',
-    ))
+    # Create vertical bar plot
+    bars = ax.bar(range(len(language_users)), language_users['total_users'], 
+                  color=cm.viridis(np.linspace(0.2, 0.9, len(language_users))))
 
-    fig.update_layout(
-        title='Anime User Distribution by Primary Language<br><sub>Does localization drive adoption?</sub>',
-        xaxis_title='Language',
-        yaxis_title='Total Users',
-        height=600,
-        showlegend=False
-    )
+    # Set labels
+    ax.set_xticks(range(len(language_users)))
+    ax.set_xticklabels(language_users['language'].values, rotation=45, ha='right')
+    ax.set_ylabel('Total Users', fontsize=12, fontweight='bold')
+    ax.set_title('Anime User Distribution by Primary Language', fontsize=14, fontweight='bold', pad=20)
 
-    return fig
+    # Add value labels on bars
+    add_count_on_bars(ax)
+
+    # Style
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.grid(axis='y', alpha=0.3, linestyle='--')
+
+    plt.tight_layout()
+
+    return fig, ax
 
 
 # ========================================
 # LANGUAGE & LOCALIZATION ANALYSIS
 # ========================================
 
-def voice_actor_character_popularity(top_n=20):
+def voice_actor_character_popularity(top_n=20, figsize=(16, 10)):
     """
     Analyze the correlation between voice actors and character popularity.
     Shows if certain voice actors consistently voice popular characters.
@@ -728,11 +736,15 @@ def voice_actor_character_popularity(top_n=20):
     ----------
     top_n : int, default=20
         Number of top voice actors to display
+    figsize : tuple, default=(16, 10)
+        Matplotlib figure size
 
     Returns
     -------
-    fig : plotly.graph_objects.Figure
-        Interactive bar chart showing voice actor correlation with character popularity
+    fig, axes : matplotlib Figure and Axes
+        Two subplots: 
+        1) Top N most impactful VAs (by total favorites)
+        2) Top N most consistent VAs (by average favorites per character)
     """
     # Load person_voice_works data
     person_voice_works_df = pd.read_csv(INPUT_DIR_PATH + "person_voice_works_clean" + FILE_EXTENSION)
@@ -771,38 +783,77 @@ def voice_actor_character_popularity(top_n=20):
     # Filter: only VAs with at least 3 characters voiced
     va_stats = va_stats[va_stats["num_characters"] >= 3]
 
-    # Sort by total character favorites
-    va_stats = va_stats.sort_values("total_character_favs", ascending=False).head(top_n)
+    # Prepare data for both subplots
+    top_by_total = va_stats.sort_values("total_character_favs", ascending=False).head(top_n)
+    top_by_avg = va_stats.sort_values("avg_character_favs", ascending=False).head(top_n)
 
-    # Create visualization
-    fig = go.Figure()
+    # Create figure with two subplots
+    fig, axes = plt.subplots(1, 2, figsize=figsize)
 
-    fig.add_trace(go.Bar(
-        y=va_stats["name"][::-1],  # Reverse for better readability
-        x=va_stats["total_character_favs"][::-1],
-        orientation='h',
-        marker=dict(
-            color=va_stats["avg_character_favs"][::-1],
-            colorscale='Plasma',
-            showscale=True,
-            colorbar=dict(title="Avg Favs<br>per Character")
-        ),
-        text=va_stats["num_characters"][::-1],
-        texttemplate='%{text} chars',
-        textposition='inside',
-        hovertemplate='<b>%{y}</b><br>Total Favorites: %{x:,}<br>Characters Voiced: %{text}<extra></extra>'
-    ))
-
-    fig.update_layout(
-        title='Top Voice Actors by Character Popularity<br><sub>Do certain VAs consistently voice beloved characters?</sub>',
-        xaxis_title='Total Character Favorites',
-        yaxis_title='Voice Actor',
-        height=700,
-        showlegend=False,
-        hovermode='closest'
+    # --- LEFT SUBPLOT: Most Impactful VAs (Total Favorites) ---
+    ax1 = axes[0]
+    plot_data_total = top_by_total.sort_values("total_character_favs", ascending=True)
+    
+    bars1 = ax1.barh(
+        range(len(plot_data_total)),
+        plot_data_total["total_character_favs"],
+        color=cm.plasma(np.linspace(0.3, 0.9, len(plot_data_total)))
     )
+    
+    ax1.set_yticks(range(len(plot_data_total)))
+    ax1.set_yticklabels(plot_data_total["name"].values)
+    ax1.set_xlabel("Total Character Favorites", fontsize=12)
+    ax1.set_title(f"Top {top_n} Most Impactful VAs\n(Total favorites across all characters)", 
+                  fontsize=13, fontweight="bold", pad=15)
+    ax1.grid(axis='x', alpha=0.3)
+    ax1.spines['top'].set_visible(False)
+    ax1.spines['right'].set_visible(False)
+    
+    # Add value labels with character count
+    for i, (bar, value, num_chars) in enumerate(zip(bars1, plot_data_total["total_character_favs"], plot_data_total["num_characters"])):
+        ax1.text(
+            value,
+            i,
+            f' {int(value):,} ({int(num_chars)} chars)',
+            va='center',
+            ha='left',
+            fontsize=9,
+            fontweight='bold'
+        )
 
-    return fig
+    # --- RIGHT SUBPLOT: Most Consistent VAs (Average Favorites) ---
+    ax2 = axes[1]
+    plot_data_avg = top_by_avg.sort_values("avg_character_favs", ascending=True)
+    
+    bars2 = ax2.barh(
+        range(len(plot_data_avg)),
+        plot_data_avg["avg_character_favs"],
+        color=cm.viridis(np.linspace(0.3, 0.9, len(plot_data_avg)))
+    )
+    
+    ax2.set_yticks(range(len(plot_data_avg)))
+    ax2.set_yticklabels(plot_data_avg["name"].values)
+    ax2.set_xlabel("Average Favorites per Character", fontsize=12)
+    ax2.set_title(f"Top {top_n} Most Consistent VAs\n(Highest average per character)", 
+                  fontsize=13, fontweight="bold", pad=15)
+    ax2.grid(axis='x', alpha=0.3)
+    ax2.spines['top'].set_visible(False)
+    ax2.spines['right'].set_visible(False)
+    
+    # Add value labels with character count
+    for i, (bar, value, num_chars) in enumerate(zip(bars2, plot_data_avg["avg_character_favs"], plot_data_avg["num_characters"])):
+        ax2.text(
+            value,
+            i,
+            f' {int(value):,} ({int(num_chars)} chars)',
+            va='center',
+            ha='left',
+            fontsize=9,
+            fontweight='bold'
+        )
+
+    plt.tight_layout()
+    return fig, axes
 
 
 def top_n_most_watched_genres(top_n=10, figsize=(12, 6)):
