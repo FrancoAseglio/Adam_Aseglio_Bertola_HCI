@@ -603,17 +603,8 @@ def create_animated_map():
     # Preparo i dati aggregati per paese e anno
     country_year_counts = prepare_country_data(profiles_df)
 
-    # Statistiche sui dati
-    print("Dati aggregati:")
-    print(f"Paesi unici prima della normalizzazione: {profiles_df['location'].nunique()}")
-    print(f"Paesi unici dopo la normalizzazione: {country_year_counts['country'].nunique()}")
-    print(f"\nNumero totale di record: {len(country_year_counts)}")
-    print(f"Anni disponibili: {sorted(country_year_counts['year_label'].unique())}")
-
     # Creo e mostro la mappa animata
-
     years_sorted = sorted(country_year_counts['year_label'].unique())
-
     min_users_log = country_year_counts['log_cumulative'].min()
     max_users_log = country_year_counts['log_cumulative'].max()
 
