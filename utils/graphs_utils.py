@@ -23,9 +23,11 @@ from utils.dev_utils import add_count_on_bars, parse_list
 # DATA LOADING
 # ========================================
 
-## Comment or uncomment the appropriate data path
-# INPUT_DIR_PATH = "C:\\Users\\Lorenzo\\OneDrive\\Desktop\\datasets\\cleaned\\"
-INPUT_DIR_PATH = "~/datasets/cleaned/"
+INPUT_DIR_PATH = Path("~/datasets/cleaned/").expanduser()
+if not INPUT_DIR_PATH.exists():
+    INPUT_DIR_PATH = Path("C:\\Users\\Lorenzo\\OneDrive\\Desktop\\datasets\\cleaned\\")
+
+INPUT_DIR_PATH = str(INPUT_DIR_PATH) + "/"
 FILE_EXTENSION = ".csv"
 
 character_anime_works_df = pd.read_csv(INPUT_DIR_PATH + "character_anime_works_clean" + FILE_EXTENSION)
