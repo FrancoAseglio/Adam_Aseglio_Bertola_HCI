@@ -24,8 +24,8 @@ from utils.dev_utils import add_count_on_bars, parse_list
 # ========================================
 
 ## Comment or uncomment the appropriate data path
-INPUT_DIR_PATH = "C:\\Users\\Lorenzo\\OneDrive\\Desktop\\datasets\\cleaned\\"
-#INPUT_DIR_PATH = "~/datasets/cleaned/"
+# INPUT_DIR_PATH = "C:\\Users\\Lorenzo\\OneDrive\\Desktop\\datasets\\cleaned\\"
+INPUT_DIR_PATH = "~/datasets/cleaned/"
 FILE_EXTENSION = ".csv"
 
 character_anime_works_df = pd.read_csv(INPUT_DIR_PATH + "character_anime_works_clean" + FILE_EXTENSION)
@@ -978,3 +978,400 @@ def top_n_most_liked_genres(top_n=10, figsize=(12, 6)):
 
     plt.tight_layout()
     return fig, ax
+
+
+def completion_dropout_by_episode_count(min_users=100, figsize=(1400, 700)):
+    """
+    Analyze completion, dropout, and in-progress rates by episode count categories.
+    Shows how anime length affects user commitment and completion behavior.
+
+    Parameters
+    ----------
+    min_users : int, default=100
+        Minimum number of users who started the anime for it to be included.
+    figsize :  tuple, default=(1400, 700)
+        Figure size in pixels (width, height).
+
+    Returns
+    -------
+    fig :  plotly.graph_objects.Figure
+        Interactive grouped bar chart with 3 metrics.
+    """
+    # Prepare engagement data
+    anime_engagement = details_df[["mal_id", "title", "episodes", "score"]].merge(
+        stats_df[["mal_id", "watching", "completed", "on_hold", "dropped"]],
+        on="mal_id",
+        how="inner",
+    )
+
+    anime_engagement["started_users"] = (
+        anime_engagement["watching"]
+        + anime_engagement["completed"]
+        + anime_engagement["on_hold"]
+        + anime_engagement["dropped"]
+    )
+
+    # Filter by minimum users and valid episodes
+    anime_engagement = anime_engagement[
+        (anime_engagement["started_users"] >= min_users)
+        & (anime_engagement["episodes"]. notna())
+        & (anime_engagement["episodes"] > 0)
+    ].copy()
+
+    # Calculate rates
+    anime_engagement["completion_rate"] = (anime_engagement["completed"] / anime_engagement["started_users"] * 100)
+    anime_engagement["dropout_rate"] = (anime_engagement["dropped"] / anime_engagement["started_users"] * 100)
+    anime_engagement["watching_rate"] = ( anime_engagement["watching"] / anime_engagement["started_users"] * 100)
+    anime_engagement["on_hold_rate"] = (anime_engagement["on_hold"] / anime_engagement["started_users"] * 100)
+
+    # Create episode bins
+    bins = [1, 2, 13, 25, 51, 101, 501, 3000]
+    labels = [
+        "1 ep\n(Movie/Special)",
+        "2-12 eps\n(1 cour)",
+        "13-24 eps\n(2 cour)",
+        "25-50 eps\n(Long)",
+        "51-100 eps\n(Very Long)",
+        "101-500 eps\n(Ongoing)",
+        "501+ eps\n(Mega)",
+    ]
+
+    anime_engagement["episode_category"] = pd.cut(
+        anime_engagement["episodes"], bins=bins, labels=labels, include_lowest=True
+    )
+
+    # Aggregate by episode category
+    stats = (
+        anime_engagement.groupby("episode_category", observed=True)
+        .agg({
+            "completion_rate": "mean",
+            "dropout_rate": "mean",
+            "mal_id": "count",
+            "started_users": "sum",
+            "watching":  "sum",
+            "on_hold": "sum",
+        })
+        .reset_index()
+    )
+
+    stats.columns = [
+        "Category",
+        "Avg Completion Rate",
+        "Avg Dropout Rate",
+        "Anime Count",
+        "Total Started Users",
+        "Total Watching",
+        "Total On Hold",
+    ]
+
+    # Calculate in-progress rate
+    stats["Avg In-Progress Rate"] = ((stats["Total Watching"] + stats["Total On Hold"]) / stats["Total Started Users"] * 100)
+
+    # --- Visualization ---
+    fig = go.Figure()
+
+    colors = {
+        "Completion Rate": "#4ECDC4",
+        "Dropout Rate": "#FF6B6B",
+        "In-Progress/On-Hold": "#FFA500",
+    }
+
+    for col, label in [
+        ("Avg Completion Rate", "Completion Rate"),
+        ("Avg Dropout Rate", "Dropout Rate"),
+        ("Avg In-Progress Rate", "In-Progress/On-Hold"),
+    ]:
+        fig. add_trace(
+            go. Bar(
+                x=stats["Category"],
+                y=stats[col],
+                name=label,
+                marker=dict(color=colors[label]),
+                text=stats[col].apply(lambda x: f"{x:.1f}%"),
+                textposition="outside",
+                hovertemplate=(
+                    "<b>%{x}</b><br>"
+                    + f"{label}: %{{y:.1f}}%<br>"
+                    + "Anime Count: %{customdata[0]:,}<br>"
+                    + "Total Started: %{customdata[1]:,}<br>"
+                    + "<extra></extra>"
+                ),
+                customdata=stats[["Anime Count", "Total Started Users"]].values,
+            )
+        )
+
+    max_val = (
+        stats[["Avg Completion Rate", "Avg Dropout Rate", "Avg In-Progress Rate"]]
+        .max()
+        .max()
+    )
+
+    fig.update_layout(
+        title="Completion vs Dropout vs In-Progress Rate by Episode Count<br>"
+        "<sub>Does anime length affect user commitment?</sub>",
+        xaxis_title="Episode Count Category",
+        yaxis_title="Rate (%)",
+        barmode="group",
+        width=figsize[0],
+        height=figsize[1],
+        hovermode="x unified",
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="center",
+            x=0.5,
+            font=dict(size=12),
+            bgcolor="rgba(255,255,255,0.9)",
+            bordercolor="#CCCCCC",
+            borderwidth=1,
+        ),
+        font=dict(size=12),
+        yaxis=dict(range=[0, max_val * 1.15]),
+    )
+
+    return fig
+
+
+
+def completion_dropout_by_type(min_users=100, figsize=(1400, 600)):
+    """
+    Analyze completion and dropout rates by anime type. 
+    Interactive grouped bar chart showing completion vs dropout rates. 
+
+    Parameters
+    ----------
+    min_users : int, default=100
+        Minimum number of users who started the anime for it to be included. 
+    figsize : tuple, default=(1400, 600)
+        Figure size in pixels (width, height).
+
+    Returns
+    -------
+    fig : plotly.graph_objects. Figure
+        Interactive grouped bar chart.
+    """
+    # Prepare engagement data
+    anime_engagement = details_df[["mal_id", "title", "type", "score"]].merge(
+        stats_df[["mal_id", "watching", "completed", "on_hold", "dropped"]],
+        on="mal_id",
+        how="inner",
+    )
+
+    anime_engagement["started_users"] = (
+        anime_engagement["watching"]
+        + anime_engagement["completed"]
+        + anime_engagement["on_hold"]
+        + anime_engagement["dropped"]
+    )
+
+    # Filter by minimum users
+    anime_engagement = anime_engagement[anime_engagement["started_users"] >= min_users].copy()
+
+    # Calculate rates
+    anime_engagement["completion_rate"] = (anime_engagement["completed"] / anime_engagement["started_users"] * 100)
+    anime_engagement["dropout_rate"] = (anime_engagement["dropped"] / anime_engagement["started_users"] * 100)
+
+    # Aggregate by type
+    stats = (
+        anime_engagement.groupby("type")
+        .agg({
+            "completion_rate":  "mean",
+            "dropout_rate": "mean",
+            "mal_id": "count",
+            "started_users": "sum",
+        })
+        .reset_index()
+    )
+
+    stats.columns = [
+        "Type",
+        "Avg Completion Rate",
+        "Avg Dropout Rate",
+        "Anime Count",
+        "Total Started Users",
+    ]
+
+    # Sort by completion rate
+    stats = stats.sort_values("Avg Completion Rate", ascending=False)
+
+    # --- Visualization ---
+    fig = go.Figure()
+
+    colors = {"Completion Rate": "#4ECDC4", "Dropout Rate": "#FF6B6B"}
+
+    for col, label, color in [
+        ("Avg Completion Rate", "Completion Rate", "#4ECDC4"),
+        ("Avg Dropout Rate", "Dropout Rate", "#FF6B6B"),
+    ]:
+        fig.add_trace(
+            go.Bar(
+                x=stats["Type"],
+                y=stats[col],
+                name=label,
+                marker=dict(color=color),
+                text=stats[col].apply(lambda x: f"{x:.1f}%"),
+                textposition="outside",
+                hovertemplate=(
+                    "<b>%{x}</b><br>"
+                    + f"{label}: %{{y:.1f}}%<br>"
+                    + "Anime Count: %{customdata[0]: ,}<br>"
+                    + "Total Started:  %{customdata[1]:,}<br>"
+                    + "<extra></extra>"
+                ),
+                customdata=stats[["Anime Count", "Total Started Users"]]. values,
+            )
+        )
+
+    max_val = stats[["Avg Completion Rate", "Avg Dropout Rate"]].max().max()
+
+    fig.update_layout(
+        title="Completion vs Dropout Rate by Anime Type<br><sub>How does format affect user engagement?</sub>",
+        xaxis_title="Anime Type",
+        yaxis_title="Rate (%)",
+        height=figsize[1],
+        width=figsize[0],
+        showlegend=True,
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="center",
+            x=0.5,
+            font=dict(size=12),
+            bgcolor="rgba(255,255,255,0.9)",
+            bordercolor="#CCCCCC",
+            borderwidth=1,
+        ),
+        barmode="group",
+        hovermode="x unified",
+        font=dict(size=12),
+        yaxis=dict(range=[0, max_val * 1.15]),
+    )
+
+    return fig
+
+
+def completion_dropout_by_genre(top_n=10, min_users=100, figsize=(1400, 700)):
+    """
+    Analyze completion and dropout rates by top anime genres.
+    Interactive grouped bar chart showing which genres have best/worst engagement.
+
+    Parameters
+    ----------
+    top_n : int, default=10
+        Number of top genres to display.
+    min_users : int, default=100
+        Minimum number of users who started the anime for it to be included.
+    figsize : tuple, default=(1400, 700)
+        Figure size in pixels (width, height).
+
+    Returns
+    -------
+    fig : plotly.graph_objects.Figure
+        Interactive grouped bar chart.
+    """
+    # Prepare engagement data
+    anime_engagement = details_df[["mal_id", "title", "genres", "score"]].merge(
+        stats_df[["mal_id", "watching", "completed", "on_hold", "dropped"]],
+        on="mal_id",
+        how="inner",
+    )
+
+    anime_engagement["started_users"] = (
+        anime_engagement["watching"]
+        + anime_engagement["completed"]
+        + anime_engagement["on_hold"]
+        + anime_engagement["dropped"]
+    )
+
+    # Filter by minimum users
+    anime_engagement = anime_engagement[anime_engagement["started_users"] >= min_users].copy()
+
+    # Calculate rates
+    anime_engagement["completion_rate"] = (anime_engagement["completed"] / anime_engagement["started_users"] * 100)
+    anime_engagement["dropout_rate"] = (anime_engagement["dropped"] / anime_engagement["started_users"] * 100)
+
+    # Parse and explode genres
+    anime_engagement["genres_list"] = anime_engagement["genres"].astype(str).apply(parse_list)
+    genre_df = anime_engagement. explode("genres_list")
+    genre_df = genre_df[genre_df["genres_list"] != ""]
+
+    # Aggregate by genre
+    stats = (
+        genre_df.groupby("genres_list")
+        .agg({
+            "completion_rate": "mean",
+            "dropout_rate":  "mean",
+            "mal_id": "count",
+            "started_users": "sum",
+        })
+        .reset_index()
+    )
+
+    stats.columns = [
+        "Genre",
+        "Avg Completion Rate",
+        "Avg Dropout Rate",
+        "Anime Count",
+        "Total Started Users",
+    ]
+
+    # Get top N genres by anime count
+    stats = stats.nlargest(top_n, "Anime Count")
+    stats = stats.sort_values("Avg Completion Rate", ascending=False)
+
+    # --- Visualization ---
+    fig = go. Figure()
+
+    for col, label, color in [
+        ("Avg Completion Rate", "Completion Rate", "#4ECDC4"),
+        ("Avg Dropout Rate", "Dropout Rate", "#FF6B6B"),
+    ]:
+        fig.add_trace(
+            go.Bar(
+                x=stats["Genre"],
+                y=stats[col],
+                name=label,
+                marker=dict(color=color),
+                text=stats[col].apply(lambda x: f"{x:.1f}%"),
+                textposition="outside",
+                hovertemplate=(
+                    "<b>%{x}</b><br>"
+                    + f"{label}: %{{y:.1f}}%<br>"
+                    + "Anime Count: %{customdata[0]: ,}<br>"
+                    + "Total Started: %{customdata[1]:,}<br>"
+                    + "<extra></extra>"
+                ),
+                customdata=stats[["Anime Count", "Total Started Users"]].values,
+            )
+        )
+
+    max_val = stats[["Avg Completion Rate", "Avg Dropout Rate"]].max().max()
+
+    fig.update_layout(
+        title=f"Completion vs Dropout Rate by Top {top_n} Genres<br><sub>How does genre affect user engagement?</sub>",
+        xaxis_title="Genre",
+        yaxis_title="Rate (%)",
+        height=figsize[1],
+        width=figsize[0],
+        showlegend=True,
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="center",
+            x=0.5,
+            font=dict(size=12),
+            bgcolor="rgba(255,255,255,0.9)",
+            bordercolor="#CCCCCC",
+            borderwidth=1,
+        ),
+        barmode="group",
+        hovermode="x unified",
+        font=dict(size=12),
+        xaxis=dict(tickangle=-45),
+        yaxis=dict(range=[0, max_val * 1.15]),
+    )
+
+    return fig
