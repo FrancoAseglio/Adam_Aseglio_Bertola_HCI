@@ -11,6 +11,7 @@ import matplotlib.cm as cm
 import matplotlib.pylab as plt
 import plotly.graph_objects as go
 import plotly.express as px
+import matplotlib.pyplot as plt
 
 from scipy.cluster.hierarchy import linkage, dendrogram
 from scipy.spatial.distance import squareform
@@ -1455,3 +1456,71 @@ def create_completion_drop_distribution():
     
     
     return fig, stats_filtered
+
+# ========================================
+# VIEWING STATUS DISTRIBUTION FUNCTIONS
+# ========================================
+
+def create_viewing_status_distribution():
+    """
+    Create a horizontal bar chart showing the distribution of viewing statuses
+    across all anime in the database.
+    
+    Returns:
+    --------
+    matplotlib.figure.Figure
+        Static horizontal bar chart with viewing status distribution
+    """
+    stats_df = pd.read_csv(INPUT_DIR_PATH + "stats_clean" + FILE_EXTENSION)
+    status_counts = {
+        'completed': stats_df['completed'].sum(),
+        'plan_to_watch': stats_df['plan_to_watch'].sum(),
+        'watching': stats_df['watching'].sum(),
+        'dropped': stats_df['dropped'].sum(),
+        'on_hold': stats_df['on_hold'].sum()
+    }
+    
+    # Create dataframe with specific order
+    status_df = pd.DataFrame([
+        {'status': 'on_hold', 'count': status_counts['on_hold']},
+        {'status': 'dropped', 'count': status_counts['dropped']},
+        {'status': 'watching', 'count': status_counts['watching']},
+        {'status': 'plan_to_watch', 'count': status_counts['plan_to_watch']},
+        {'status': 'completed', 'count': status_counts['completed']}
+    ])
+    
+    total = status_df['count'].sum()
+    status_df['percentage'] = (status_df['count'] / total) * 100
+    
+    plasma_cmap = plt.cm.spring
+    colors = [plasma_cmap(i / len(status_df)) for i in range(len(status_df))]
+
+    fig, ax = plt.subplots(figsize=(10, 6))
+    bars = ax.barh(status_df['status'], status_df['count'], color=colors)
+    
+    max_count = status_df['count'].max()
+    for i, (status, count, pct) in enumerate(zip(status_df['status'], status_df['count'], status_df['percentage'])):
+        label = f"{int(count):,} ({pct:.1f}%)"
+        bar = bars[i]
+        ax.text(count + max_count * 0.01, bar.get_y() + bar.get_height()/2, 
+               label, va='center', ha='left', fontsize=10, color='black', weight='bold')
+    
+    # Extend x-axis limit to show external labels
+    ax.set_xlim(0, max_count * 1.20)
+    ax.set_xlabel('Number of Ratings', fontsize=12)
+    ax.set_ylabel('Status', fontsize=12)
+    ax.set_title('Viewing Status Distribution', fontsize=14, weight='bold')
+    
+    # Format x-axis with thousands separator
+    ax.xaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'{int(x):,}'))
+    # Add grid for better readability
+    ax.grid(axis='x', alpha=0.3, linestyle='--')
+    ax.set_axisbelow(True)
+    
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.spines['left'].set_visible(False)
+    ax.spines['bottom'].set_visible(False)
+    plt.tight_layout()
+    
+    return fig
