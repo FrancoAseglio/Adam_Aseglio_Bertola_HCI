@@ -1377,3 +1377,81 @@ def completion_dropout_by_genre(top_n=10, min_users=100, figsize=(1400, 700)):
     )
 
     return fig
+
+# ========================================
+# COMPLETION & DROP RATE DISTRIBUTION
+# ========================================
+
+def create_completion_drop_distribution():
+    """
+    Create an interactive Plotly visualization showing the distribution of 
+    completion rate and drop rate across all anime, with toggle to switch between metrics.
+    
+    Returns:
+    --------
+    plotly.graph_objects.Figure
+        Interactive visualization with dropdown to select metric
+    """
+    stats_df = pd.read_csv(INPUT_DIR_PATH + "stats_clean" + FILE_EXTENSION)
+    
+    # Calculate completion rate and drop rate for each anime
+    stats_df['total_members'] = (stats_df['watching'] + stats_df['completed'] + 
+                                  stats_df['dropped'] + stats_df['on_hold'])
+    
+    # Filter anime with at least 100 members
+    stats_filtered = stats_df[stats_df['total_members'] >= 100].copy()
+    
+    stats_filtered['completion_rate'] = (stats_filtered['completed'] / stats_filtered['total_members']) * 100
+    stats_filtered['drop_rate'] = (stats_filtered['dropped'] / stats_filtered['total_members']) * 100
+    
+    # Create bins for the distributions
+    completion_bins = np.arange(0, 101, 5)  # 0-100% in 5% intervals
+    drop_bins = np.arange(0, 101, 5)
+    
+    completion_counts, _ = np.histogram(stats_filtered['completion_rate'].dropna(), bins=completion_bins)
+    drop_counts, _ = np.histogram(stats_filtered['drop_rate'].dropna(), bins=drop_bins)
+    
+    bin_centers = (completion_bins[:-1] + completion_bins[1:]) / 2
+    
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=bin_centers,
+        y=completion_counts,
+        name='Completion Rate',
+        mode='lines+markers',
+        line=dict(color='#2ecc71', width=3),
+        marker=dict(size=6),
+        fill='tozeroy',
+        fillcolor='rgba(46, 204, 113, 0.3)',
+        hovertemplate='<b>Completion Rate: %{x:.0f}%</b><br>Anime Count: %{y:,}<extra></extra>'
+    ))
+    
+    fig.add_trace(go.Scatter(
+        x=bin_centers,
+        y=drop_counts,
+        name='Drop Rate',
+        mode='lines+markers',
+        line=dict(color='#e74c3c', width=3),
+        marker=dict(size=6),
+        fill='tozeroy',
+        fillcolor='rgba(231, 76, 60, 0.3)',
+        hovertemplate='<b>Drop Rate: %{x:.0f}%</b><br>Anime Count: %{y:,}<extra></extra>'
+    ))
+    
+    fig.update_layout(
+        title='Distribution of Completion and Drop Rates Across Anime',
+        xaxis_title='Rate (%)',
+        yaxis_title='Number of Anime',
+        template='plotly_white',
+        height=600,
+        showlegend=True,
+        legend=dict(
+            yanchor="top",
+            y=0.99,
+            xanchor="right",
+            x=0.99
+        )
+    )
+    
+    
+    return fig, stats_filtered
