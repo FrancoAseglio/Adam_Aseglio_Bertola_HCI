@@ -12,6 +12,8 @@ import matplotlib.pylab as plt
 import plotly.graph_objects as go
 import plotly.express as px
 import matplotlib.pyplot as plt
+import seaborn as sns
+import ast
 
 from scipy.cluster.hierarchy import linkage, dendrogram
 from scipy.spatial.distance import squareform
@@ -1521,6 +1523,150 @@ def create_viewing_status_distribution():
     ax.spines['right'].set_visible(False)
     ax.spines['left'].set_visible(False)
     ax.spines['bottom'].set_visible(False)
+    plt.tight_layout()
+    
+    return fig
+
+
+# ========================================
+# GENRE PREFERENCES BY PERSONA HEATMAP
+# ========================================
+
+def prepare_active_users_with_personas(profiles_df):
+    """
+    Prepare active users dataset with persona assignments based on viewing behavior.
+    
+    Parameters:
+    -----------
+    profiles_df : pd.DataFrame
+        Profiles dataset with user viewing statistics
+    
+    Returns:
+    --------
+    pd.DataFrame
+        Active users dataframe with persona column assigned
+    """
+    profiles_analysis = profiles_df.copy()
+    for col in ['watching', 'completed', 'on_hold', 'dropped', 'plan_to_watch']:
+        profiles_analysis[col] = profiles_analysis[col].astype(str).str.replace(',', '').astype(float)
+    
+    profiles_analysis['total_anime'] = profiles_analysis['completed'] + profiles_analysis['dropped'] + profiles_analysis['on_hold'] + profiles_analysis['watching']
+    profiles_analysis['completion_ratio'] = profiles_analysis['completed'] / (profiles_analysis['total_anime'] + 1)
+    profiles_analysis['drop_ratio'] = profiles_analysis['dropped'] / (profiles_analysis['total_anime'] + 1)
+    
+    # Filter active users (>= 10 anime)
+    active_users = profiles_analysis[profiles_analysis['total_anime'] >= 10].copy()
+    # Create user personas based on behavior patterns
+    def assign_persona(row):
+        if row['completion_ratio'] > 0.90 and row['total_anime'] > 300:
+            return 'Completionist'
+        elif row['drop_ratio'] > 0.10:
+            return 'Selective Critic'
+        elif row['total_anime'] < 100:
+            return 'Casual Viewer'
+        elif row['total_anime'] > 500:
+            return 'Hardcore Fan'
+        else:
+            return 'Balanced Enthusiast'
+    
+    active_users['persona'] = active_users.apply(assign_persona, axis=1)
+    
+    return active_users
+
+
+def prepare_persona_genre_data(active_users, favs_df, details_df):
+    """
+    Prepare genre preference data by fan persona.
+    
+    Parameters:
+    -----------
+    active_users : pd.DataFrame
+        Dataframe with user personas assigned
+    favs_df : pd.DataFrame
+        User favorites dataset
+    details_df : pd.DataFrame
+        Anime details dataset with genres
+    
+    Returns:
+    --------
+    pd.DataFrame
+        Filtered dataframe with persona, genre, and percentage columns for top 15 genres
+    """
+    # Define parse function for genres
+    def parse_genres_list(genre_str):
+        if pd.isna(genre_str):
+            return []
+        try:
+            genres = ast.literal_eval(genre_str)
+            if isinstance(genres, list):
+                return [g['name'] if isinstance(g, dict) else g for g in genres]
+        except:
+            return []
+        return []
+    
+    # Merge active_users with favs to get anime preferences
+    user_favs = active_users[['username', 'persona']].merge(favs_df[favs_df['fav_type'] == 'anime'], on='username', how='inner')
+    # Merge with details to get genres
+    user_favs_genres = user_favs.merge(details_df[['mal_id', 'genres']], left_on='id', right_on='mal_id', how='left')
+
+    user_favs_genres['genres_list'] = user_favs_genres['genres'].apply(parse_genres_list)
+    # Explode genres by persona
+    persona_genre_rows = []
+    for _, row in user_favs_genres.iterrows():
+        for genre in row['genres_list']:
+            persona_genre_rows.append({
+                'persona': row['persona'],
+                'genre': genre
+            })
+    
+    persona_genre_df = pd.DataFrame(persona_genre_rows)
+    # Count occurrences of each genre per persona
+    persona_genre_counts = persona_genre_df.groupby(['persona', 'genre']).size().reset_index(name='count')
+    
+    persona_totals = persona_genre_counts.groupby('persona')['count'].sum().reset_index(name='total')
+    persona_genre_counts = persona_genre_counts.merge(persona_totals, on='persona')
+    persona_genre_counts['percentage'] = (persona_genre_counts['count'] / persona_genre_counts['total']) * 100
+    
+    top_genres = persona_genre_counts.groupby('genre')['count'].sum().nlargest(15).index.tolist()
+    persona_genre_filtered = persona_genre_counts[persona_genre_counts['genre'].isin(top_genres)].copy()
+    return persona_genre_filtered
+
+
+def create_genre_persona_heatmap():
+    
+    profiles_df = load_and_prepare_profiles()
+    favs_df = pd.read_csv(INPUT_DIR_PATH + "favs_clean" + FILE_EXTENSION)
+    details_df = pd.read_csv(INPUT_DIR_PATH + "details_clean" + FILE_EXTENSION)
+    
+
+    active_users = prepare_active_users_with_personas(profiles_df)
+    persona_genre_filtered = prepare_persona_genre_data(active_users, favs_df, details_df)
+    
+    heatmap_data = persona_genre_filtered.pivot(index='genre', columns='persona', values='percentage').fillna(0)
+    column_order = ['Completionist', 'Hardcore Fan', 'Balanced Enthusiast', 'Casual Viewer', 'Selective Critic']
+    heatmap_data = heatmap_data[column_order]
+    
+    heatmap_data['total'] = heatmap_data.sum(axis=1)
+    heatmap_data = heatmap_data.sort_values('total', ascending=False).drop('total', axis=1)
+    
+   
+    fig, ax = plt.subplots(figsize=(10, 8))
+    sns.heatmap(
+        heatmap_data,
+        annot=True,
+        fmt='.1f',
+        cmap='rocket',
+        cbar_kws={'label': 'Percentage (%)'},
+        linewidths=1.5,
+        linecolor='white',
+        ax=ax
+    )
+    
+    ax.set_title('Genre Preferences by Fan Persona (Top 15 Genres)', fontsize=14, fontweight='bold', pad=20)
+    ax.set_xlabel('Fan Persona', fontsize=12, fontweight='bold')
+    ax.set_ylabel('Genre', fontsize=12, fontweight='bold')
+    ax.set_xticklabels(ax.get_xticklabels(), rotation=45, ha='right')
+    ax.set_yticklabels(ax.get_yticklabels(), rotation=0)
     plt.tight_layout()
     
     return fig
