@@ -49,7 +49,7 @@ stats_df = pd.read_csv(INPUT_DIR_PATH + "stats_clean" + FILE_EXTENSION)
 
 
 # ========================================
-# ANIME DETAILS FUNCTIONS
+# ANIME INDUSTRY FUNCTIONS
 # ========================================
 
 def anime_episode_range(figsize=(14, 5)):
@@ -180,6 +180,85 @@ def episode_score_correlation(figsize=(12, 6)):
     print(f"Interpretation: {'Weak' if abs(correlation) < 0.3 else 'Moderate' if abs(correlation) < 0.7 else 'Strong'} correlation")
     
     return fig, axes, correlation
+
+
+def studio_performance_analysis(min_anime_threshold=5, top_n=20, figsize=(16, 8)):
+    """
+    Analyze anime studios by productivity and quality.
+    Shows:
+    - Left: Top studios by number of anime produced
+    - Right: Top studios by average score
+    
+    Parameters:
+    -----------
+    min_anime_threshold : int, default=5
+        Minimum number of anime for a studio to be included
+    top_n : int, default=20
+        Number of top studios to display in each chart
+    figsize : tuple, default=(16, 8)
+        Figure size (width, height)
+    
+    Returns:
+    --------
+    fig, axes : matplotlib figure and axes objects
+    studio_analysis : DataFrame with studio metrics
+    """
+    # Merge datasets
+    df = details_df.merge(stats_df, on="mal_id", how="inner")
+    
+    # Parse studios from producers column
+    df["studios_list"] = df["studios"].astype(str).apply(parse_list)
+    
+    # Explode to have one row per studio
+    studio_df = df.explode("studios_list")
+    
+    # Remove empty studios
+    studio_df = studio_df[studio_df["studios_list"] != ""]
+    
+    # Aggregate by studio
+    studio_analysis = (
+        studio_df.groupby("studios_list")
+        .agg({"score": "mean", "mal_id": "count"})
+        .round(2)
+    )
+    studio_analysis.columns = ["Avg Score", "Count"]
+    
+    # Filter studios with sufficient sample size
+    studio_analysis = studio_analysis[studio_analysis["Count"] >= min_anime_threshold]
+    
+    # Sort and get top studios for each metric
+    top_studios_count = studio_analysis.sort_values("Count", ascending=False).head(top_n)
+    top_studios_score = studio_analysis.sort_values("Avg Score", ascending=False).head(top_n)
+    
+    # Visualize
+    fig, axes = plt.subplots(1, 2, figsize=figsize)
+    
+    # Most Prolific Studios
+    top_studios_count.sort_values("Count")["Count"].plot(
+        kind="barh", 
+        ax=axes[0], 
+        color="#1f77b4",
+        edgecolor="black"
+    )
+    axes[0].set_xlabel("Number of Anime")
+    axes[0].set_title(f"Top {top_n} Most Prolific Studios", fontsize=12, fontweight="bold")
+    axes[0].grid(axis="x", linestyle="--", alpha=0.6)
+    
+    # Highest Rated Studios
+    top_studios_score.sort_values("Avg Score")["Avg Score"].plot(
+        kind="barh", 
+        ax=axes[1], 
+        color="#2ca02c",
+        edgecolor="black"
+    )
+    axes[1].set_xlabel("Average Score")
+    axes[1].set_title(f"Top {top_n} Studios by Average Score", fontsize=12, fontweight="bold")
+    axes[1].set_xlim(0, 10)
+    axes[1].grid(axis="x", linestyle="--", alpha=0.6)
+    
+    plt.tight_layout()
+    
+    return fig, axes
 
 
 # ========================================
