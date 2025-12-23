@@ -117,6 +117,71 @@ def anime_episode_range(figsize=(14, 5)):
     return fig, axes
 
 
+def episode_score_correlation(figsize=(12, 6)):
+    """
+    Analyze correlation between episode count and scores.
+    Shows:
+    - Left: Scatter plot of episodes vs score with trend line
+    - Right: Correlation heatmap of episode-related metrics
+    
+    Parameters:
+    -----------
+    figsize : tuple, default=(12, 6)
+        Figure size (width, height)
+    
+    Returns:
+    --------
+    fig, axes : matplotlib figure and axes objects
+    correlation : float, Pearson correlation coefficient
+    """
+    # Merge datasets
+    df = details_df.merge(stats_df, on="mal_id", how="inner")
+    
+    # Filter out extreme outliers and missing values
+    df_clean = df[(df["episodes"] > 0) & (df["episodes"] < 500) & (df["score"].notna())].copy()
+    
+    # Calculate correlation
+    correlation = df_clean["episodes"].corr(df_clean["score"])
+    
+    # Create visualization
+    fig, axes = plt.subplots(1, 2, figsize=figsize)
+    
+    # Plot 1: Scatter plot with trend line
+    axes[0].scatter(df_clean["episodes"], df_clean["score"], alpha=0.3, s=10, color="steelblue")
+    
+    # Add trend line
+    z = np.polyfit(df_clean["episodes"], df_clean["score"], 1)
+    p = np.poly1d(z)
+    axes[0].plot(df_clean["episodes"], p(df_clean["episodes"]), "r--", linewidth=2, label=f"Trend line")
+    
+    axes[0].set_title(f"Episodes vs Score (Correlation: {correlation:.3f})", fontsize=12, fontweight="bold")
+    axes[0].set_xlabel("Number of Episodes")
+    axes[0].set_ylabel("Score")
+    axes[0].grid(True, alpha=0.3)
+    axes[0].legend()
+    
+    # Plot 2: Boxplot by episode category
+    df_clean["episode_category"] = pd.cut(
+        df_clean["episodes"],
+        bins=[0, 1, 12, 24, 50, 100, 500],
+        labels=["Single", "2-12", "13-24", "25-50", "51-100", "100+"]
+    )
+    
+    df_clean.boxplot(column="score", by="episode_category", ax=axes[1], patch_artist=True)
+    axes[1].set_title("Score Distribution by Episode Range", fontsize=12, fontweight="bold")
+    axes[1].set_xlabel("Episode Range")
+    axes[1].set_ylabel("Score")
+    axes[1].get_figure().suptitle("")  # Remove automatic title
+    plt.setp(axes[1].xaxis.get_majorticklabels(), rotation=45)
+    
+    plt.tight_layout()
+    
+    print(f"Pearson Correlation Coefficient: {correlation:.4f}")
+    print(f"Interpretation: {'Weak' if abs(correlation) < 0.3 else 'Moderate' if abs(correlation) < 0.7 else 'Strong'} correlation")
+    
+    return fig, axes, correlation
+
+
 # ========================================
 # CHARACTER ANALYSIS FUNCTIONS
 # ========================================
