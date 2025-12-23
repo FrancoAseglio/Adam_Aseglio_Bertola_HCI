@@ -49,6 +49,75 @@ stats_df = pd.read_csv(INPUT_DIR_PATH + "stats_clean" + FILE_EXTENSION)
 
 
 # ========================================
+# ANIME DETAILS FUNCTIONS
+# ========================================
+
+def anime_episode_range(figsize=(14, 5)):
+    """
+    Plot side-by-side bar charts analyzing anime by episode count ranges.
+    
+    Shows:
+    - Left: Distribution of anime across different episode ranges
+    - Right: Average score for each episode range
+    
+    Parameters:
+    -----------
+    figsize : tuple, default=(14, 5)
+        Figure size (width, height)
+    
+    Returns:
+    --------
+    fig, axes : matplotlib figure and axes objects
+    """
+    
+    # Merge datasets
+    df = details_df.merge(stats_df, on="mal_id", how="inner")
+
+    # Categorize anime by episode count
+    df["episode_category"] = pd.cut(
+        df["episodes"],
+        bins=[0, 1, 12, 24, 50, 100, 5000],
+        labels=["Single", "2-12 eps", "13-24 eps", "25-50 eps", "51-100 eps", "100+ eps"],
+    )
+
+    # Aggregate metrics by episode category
+    episode_stats = df.groupby("episode_category", observed=True).agg(
+        avg_score=("score", "mean"),
+        anime_count=("mal_id", "count")
+    ).round(2)
+
+    # Create visualization
+    fig, axes = plt.subplots(1, 2, figsize=figsize)
+
+    # Plot 1: Anime count distribution
+    episode_stats["anime_count"].plot(kind="bar", ax=axes[0], color="coral", edgecolor="black")
+    axes[0].set_title("Anime Distribution by Episode Range", fontsize=12, fontweight="bold")
+    axes[0].set_xlabel("Episode Range")
+    axes[0].set_ylabel("Number of Anime")
+    axes[0].tick_params(axis="x", rotation=45)
+    axes[0].set_ylim(0, 15000)
+    axes[0].grid(axis="y", linestyle="--", alpha=0.6)
+    add_count_on_bars(axes[0])
+
+    # Plot 2: Average score by episode range
+    episode_stats["avg_score"].plot(kind="bar", ax=axes[1], color="green", edgecolor="black")
+    axes[1].set_title("Average Score by Episode Range", fontsize=12, fontweight="bold")
+    axes[1].set_xlabel("Episode Range")
+    axes[1].set_ylabel("Average Score")
+    axes[1].tick_params(axis="x", rotation=45)
+    axes[1].set_ylim(0, 10)
+    axes[1].grid(axis="y", linestyle="--", alpha=0.6)
+
+    # Add average score values on bars
+    for container in axes[1].containers:
+        axes[1].bar_label(container, fmt='%.2f', padding=3)
+
+    plt.tight_layout()
+    
+    return fig, axes
+
+
+# ========================================
 # CHARACTER ANALYSIS FUNCTIONS
 # ========================================
 
@@ -503,6 +572,7 @@ def recommendation_type_patterns(min_count=200, figsize=(1200, 600)):
     fig.update_yaxes(type="log")
 
     return fig
+
 
 # ========================================
 # GEOGRAPHIC DISTRIBUTION FUNCTIONS
@@ -1305,6 +1375,7 @@ def completion_dropout_by_genre(top_n=10, min_users=100, figsize=(1400, 700)):
 
     return fig
 
+
 # ========================================
 # COMPLETION & DROP RATE DISTRIBUTION
 # ========================================
@@ -1382,6 +1453,7 @@ def create_completion_drop_distribution():
     
     
     return fig, stats_filtered
+
 
 # ========================================
 # VIEWING STATUS DISTRIBUTION FUNCTIONS
