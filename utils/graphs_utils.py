@@ -738,251 +738,175 @@ def voice_actor_character_popularity(top_n=20, figsize=(16, 10)):
     Returns
     -------
     fig, axes : matplotlib Figure and Axes
-        Two subplots: 
-        1) Top N most impactful VAs (by total favorites)
-        2) Top N most consistent VAs (by average favorites per character)
     """
-    # Load person_voice_works data
-    person_voice_works_df = pd.read_csv(INPUT_DIR_PATH + "person_voice_works_clean" + FILE_EXTENSION)
-    person_details_df = pd.read_csv(INPUT_DIR_PATH + "person_details_clean" + FILE_EXTENSION)
+    # Load data
+    voice_works = pd.read_csv(INPUT_DIR_PATH + "person_voice_works_clean" + FILE_EXTENSION)
+    person_details = pd.read_csv(INPUT_DIR_PATH + "person_details_clean" + FILE_EXTENSION)
 
-    # Get character favorites
-    char_favs = favs_df[favs_df["fav_type"] == "character"].copy()
-    char_fav_counts = char_favs.groupby("id").size().reset_index(name="user_favs")
+    # Get user favorites
+    char_user_favs = favs_df[favs_df["fav_type"] == "character"].groupby("id").size().reset_index(name="user_favs")
 
-    # Merge with character dataset to get total favorites
-    char_popularity = characters_df.merge(char_fav_counts, left_on="character_mal_id", right_on="id", how="left")
+    # Merge with characters
+    char_popularity = characters_df.merge(char_user_favs, left_on="character_mal_id", right_on="id", how="left")
     char_popularity["user_favs"] = char_popularity["user_favs"].fillna(0)
-    char_popularity["total_favs"] = (char_popularity["favorites"].fillna(0) + char_popularity["user_favs"])
+    char_popularity["total_favs"] = char_popularity["favorites"].fillna(0) + char_popularity["user_favs"]
 
-    # Merge voice actors with characters
-    voice_char = person_voice_works_df.merge(
-        char_popularity[["character_mal_id", "name", "total_favs"]],
-        on="character_mal_id",
-        how="inner"
-    )
+    # Join voice actors with characters
+    va_chars = voice_works.merge(char_popularity[["character_mal_id", "total_favs"]], on="character_mal_id")
 
-    # Aggregate by voice actor (person_mal_id)
-    va_stats = voice_char.groupby("person_mal_id").agg({
+    # Aggregate by voice actor
+    va_stats = va_chars.groupby("person_mal_id").agg({
         "total_favs": ["sum", "mean", "count"]
     }).reset_index()
+    va_stats.columns = ["person_mal_id", "total_favs", "avg_favs", "num_chars"]
 
-    va_stats.columns = ["person_mal_id", "total_character_favs", "avg_character_favs", "num_characters"]
+    # Add names and filter
+    va_stats = va_stats.merge(person_details[["person_mal_id", "name"]], on="person_mal_id")
+    va_stats = va_stats[va_stats["num_chars"] >= 3]
 
-    # Merge with person details to get names
-    va_stats = va_stats.merge(
-        person_details_df[["person_mal_id", "name"]],
-        on="person_mal_id",
-        how="left"
-    )
+    # Get top VAs
+    top_total = va_stats.nlargest(top_n, "total_favs").sort_values("total_favs")
+    top_avg = va_stats.nlargest(top_n, "avg_favs").sort_values("avg_favs")
 
-    # Filter: only VAs with at least 3 characters voiced
-    va_stats = va_stats[va_stats["num_characters"] >= 3]
-
-    # Prepare data for both subplots
-    top_by_total = va_stats.sort_values("total_character_favs", ascending=False).head(top_n)
-    top_by_avg = va_stats.sort_values("avg_character_favs", ascending=False).head(top_n)
-
-    # Create figure with two subplots
+    # Create plots
     fig, axes = plt.subplots(1, 2, figsize=figsize)
 
-    # --- LEFT SUBPLOT: Most Impactful VAs (Total Favorites) ---
-    ax1 = axes[0]
-    plot_data_total = top_by_total.sort_values("total_character_favs", ascending=True)
+    # Left plot: Total favorites
+    axes[0].barh(range(len(top_total)), top_total["total_favs"], 
+                 color=cm.plasma(np.linspace(0.3, 0.9, len(top_total))))
+    axes[0].set_yticks(range(len(top_total)))
+    axes[0].set_yticklabels(top_total["name"])
+    axes[0].set_xlabel("Total Character Favorites", fontsize=12)
+    axes[0].set_title(f"Top {top_n} Most Impactful VAs", fontsize=13, fontweight="bold")
+    axes[0].grid(axis='x', alpha=0.3)
     
-    bars1 = ax1.barh(
-        range(len(plot_data_total)),
-        plot_data_total["total_character_favs"],
-        color=cm.plasma(np.linspace(0.3, 0.9, len(plot_data_total)))
-    )
-    
-    ax1.set_yticks(range(len(plot_data_total)))
-    ax1.set_yticklabels(plot_data_total["name"].values)
-    ax1.set_xlabel("Total Character Favorites", fontsize=12)
-    ax1.set_title(f"Top {top_n} Most Impactful VAs\n(Total favorites across all characters)", 
-                  fontsize=13, fontweight="bold", pad=15)
-    ax1.grid(axis='x', alpha=0.3)
-    ax1.spines['top'].set_visible(False)
-    ax1.spines['right'].set_visible(False)
-    
-    # Add value labels with character count
-    for i, (bar, value, num_chars) in enumerate(zip(bars1, plot_data_total["total_character_favs"], plot_data_total["num_characters"])):
-        ax1.text(
-            value,
-            i,
-            f' {int(value):,} ({int(num_chars)} chars)',
-            va='center',
-            ha='left',
-            fontsize=9,
-            fontweight='bold'
-        )
+    for i, (val, n) in enumerate(zip(top_total["total_favs"], top_total["num_chars"])):
+        axes[0].text(val, i, f' {int(val):,} ({int(n)} chars)', va='center', fontsize=9)
 
-    # --- RIGHT SUBPLOT: Most Consistent VAs (Average Favorites) ---
-    ax2 = axes[1]
-    plot_data_avg = top_by_avg.sort_values("avg_character_favs", ascending=True)
+    # Right plot: Average favorites
+    axes[1].barh(range(len(top_avg)), top_avg["avg_favs"],
+                 color=cm.viridis(np.linspace(0.3, 0.9, len(top_avg))))
+    axes[1].set_yticks(range(len(top_avg)))
+    axes[1].set_yticklabels(top_avg["name"])
+    axes[1].set_xlabel("Average Favorites per Character", fontsize=12)
+    axes[1].set_title(f"Top {top_n} Most Consistent VAs", fontsize=13, fontweight="bold")
+    axes[1].grid(axis='x', alpha=0.3)
     
-    bars2 = ax2.barh(
-        range(len(plot_data_avg)),
-        plot_data_avg["avg_character_favs"],
-        color=cm.viridis(np.linspace(0.3, 0.9, len(plot_data_avg)))
-    )
-    
-    ax2.set_yticks(range(len(plot_data_avg)))
-    ax2.set_yticklabels(plot_data_avg["name"].values)
-    ax2.set_xlabel("Average Favorites per Character", fontsize=12)
-    ax2.set_title(f"Top {top_n} Most Consistent VAs\n(Highest average per character)", 
-                  fontsize=13, fontweight="bold", pad=15)
-    ax2.grid(axis='x', alpha=0.3)
-    ax2.spines['top'].set_visible(False)
-    ax2.spines['right'].set_visible(False)
-    
-    # Add value labels with character count
-    for i, (bar, value, num_chars) in enumerate(zip(bars2, plot_data_avg["avg_character_favs"], plot_data_avg["num_characters"])):
-        ax2.text(
-            value,
-            i,
-            f' {int(value):,} ({int(num_chars)} chars)',
-            va='center',
-            ha='left',
-            fontsize=9,
-            fontweight='bold'
-        )
+    for i, (val, n) in enumerate(zip(top_avg["avg_favs"], top_avg["num_chars"])):
+        axes[1].text(val, i, f' {int(val):,} ({int(n)} chars)', va='center', fontsize=9)
 
     plt.tight_layout()
     return fig, axes
 
 
-def top_n_most_watched_genres(top_n=10, figsize=(12, 6)):
+def genres_popularity(top_n=10, figsize=(16, 6)):
     """
-    Plot bar chart of most watched genres with their total viewership counts.
+    Plot side-by-side bar charts of most watched and most liked genres.
     
     Parameters:
     -----------
     top_n : int, default=10
         Number of top genres to display
-    figsize : tuple, default=(12, 6)
+    figsize : tuple, default=(16, 6)
         Figure size (width, height)
     
     Returns:
     --------
-    fig, ax : matplotlib figure and axes objects
+    fig, axes : matplotlib figure and axes objects
     """
-        
+    
+    # === LEFT PLOT: Most Watched Genres ===
     # Merge details with stats
     merged = details_df.merge(stats_df, on='mal_id', how='inner')
     
     # Filter out rows without genres
     merged_with_genres = merged[merged['genres'].notna()].copy()
     
-    # Explode genres (split comma-separated genres into separate rows)
-    merged_with_genres['genres'] = merged_with_genres['genres'].apply(parse_list)
-    exploded = merged_with_genres.explode('genres')
+    # Calculate total engagement (watching + completed + on_hold + dropped)
+    merged_with_genres['total_engagement'] = (
+        merged_with_genres['watching'] + 
+        merged_with_genres['completed'] + 
+        merged_with_genres['on_hold'] + 
+        merged_with_genres['dropped']
+    )
     
-    # Calculate total viewers per genre
-    genre_stats = exploded.groupby('genres')['watching'].sum().reset_index()
-    genre_stats.columns = ['Genre', 'Total Viewers']
+    # Explode genres
+    merged_with_genres['genres'] = merged_with_genres['genres'].apply(parse_list)
+    exploded_watched = merged_with_genres.explode('genres')
+    
+    # Calculate total engagement per genre
+    genre_stats = exploded_watched.groupby('genres')['total_engagement'].sum().reset_index()
+    genre_stats.columns = ['Genre', 'Total Engagement']
     
     # Get top N genres
-    top_genres = genre_stats.nlargest(top_n, 'Total Viewers')
+    top_watched = genre_stats.nlargest(top_n, 'Total Engagement')
     
-    # Create figure
-    fig, ax = plt.subplots(figsize=figsize)
-    
-    # Create bar plot
-    bars = ax.barh(range(len(top_genres)), top_genres['Total Viewers'], 
-                   color=cm.plasma(np.linspace(0.2, 0.9, len(top_genres))))
-    
-    # Set labels
-    ax.set_yticks(range(len(top_genres)))
-    ax.set_yticklabels(top_genres['Genre'].values)
-    ax.set_xlabel('Total Viewers', fontsize=12, fontweight='bold')
-    ax.set_title(f'Top {top_n} Most Watched Genres', fontsize=14, fontweight='bold', pad=20)
-    
-    # Add value labels on bars
-    for i, (bar, value) in enumerate(zip(bars, top_genres['Total Viewers'])):
-        ax.text(value, i, f' {value:,.0f}', va='center', fontsize=10, fontweight='bold')
-    
-    # Invert y-axis so #1 is at top
-    ax.invert_yaxis()
-    
-    # Style
-    ax.spines['top'].set_visible(False)
-    ax.spines['right'].set_visible(False)
-    ax.grid(axis='x', alpha=0.3, linestyle='--')
-    
-    plt.tight_layout()
-    
-    return fig, ax
-
-
-def top_n_most_liked_genres(top_n=10, figsize=(12, 6)):
-    """
-    Plot bar chart of most liked (favorited) genres by number of favorites.
-
-    Logic:
-    - Filter `favs_df` for entries where the favorite type is the anime itself
-    - Merge with `details_df` on anime id to obtain genres
-    - Explode genres and count how many times each genre appears in the favorites
-    - Return a horizontal bar chart of the top-N genres by favorite count
-
-    Returns:
-    --------
-    fig, ax : matplotlib Figure and Axes
-    """
-
+    # === RIGHT PLOT: Most Liked Genres ===
     # Select only anime favorites
     anime_favs = favs_df[favs_df["fav_type"] == "anime"].copy()
-
-    # Merge favorites with anime details using the anime id
-    # In `favs_df` the id column refers to the favorited object id (anime id when fav_type=='anime')
-    merged = anime_favs.merge(details_df, left_on="id", right_on="mal_id", how="inner")
-
+    
+    # Merge favorites with anime details
+    merged_favs = anime_favs.merge(details_df, left_on="id", right_on="mal_id", how="inner")
+    
     # Keep only rows with genre information
-    merged = merged[merged["genres"].notna()].copy()
-    if merged.empty:
-        fig, ax = plt.subplots(figsize=figsize)
-        ax.text(0.5, 0.5, "No anime favorites with genre data available.", ha="center", va="center")
-        ax.axis("off")
-        return fig, ax
-
-    # Explode genres into separate rows
-    merged['genres'] = merged['genres'].apply(parse_list)
-    exploded = merged.explode("genres")
-    exploded = exploded[exploded["genres"] != ""]
-
-    # Count favorites per genre (how many times an anime in that genre was favorited)
-    genre_counts = exploded["genres"].value_counts().reset_index()
+    merged_favs = merged_favs[merged_favs["genres"].notna()].copy()
+    
+    # Explode genres
+    merged_favs['genres'] = merged_favs['genres'].apply(parse_list)
+    exploded_liked = merged_favs.explode("genres")
+    exploded_liked = exploded_liked[exploded_liked["genres"] != ""]
+    
+    # Count favorites per genre
+    genre_counts = exploded_liked["genres"].value_counts().reset_index()
     genre_counts.columns = ["Genre", "Favorite Count"]
-
+    
     # Get top N genres
-    top_genres = genre_counts.head(top_n)
-
-    # Create plot
-    fig, ax = plt.subplots(figsize=figsize)
-    bars = ax.barh(
-        range(len(top_genres)),
-        top_genres["Favorite Count"],
-        color=cm.plasma(np.linspace(0.2, 0.9, len(top_genres)))
+    top_liked = genre_counts.head(top_n)
+    
+    # === CREATE VISUALIZATION ===
+    fig, axes = plt.subplots(1, 2, figsize=figsize)
+    
+    # Plot 1: Most Watched Genres
+    bars_watched = axes[0].barh(
+        range(len(top_watched)), 
+        top_watched['Total Engagement'],
+        color=cm.plasma(np.linspace(0.2, 0.9, len(top_watched)))
     )
-
-    ax.set_yticks(range(len(top_genres)))
-    ax.set_yticklabels(top_genres["Genre"].values)
-    ax.set_xlabel("Favorite Count", fontsize=12, fontweight="bold")
-    ax.set_title(f"Top {top_n} Most Liked Genres", fontsize=14, fontweight="bold", pad=20)
-
+    axes[0].set_yticks(range(len(top_watched)))
+    axes[0].set_yticklabels(top_watched['Genre'].values)
+    axes[0].set_xlabel('Total Engagement')
+    axes[0].set_title(f'Top {top_n} Most Watched Genres')
+    axes[0].invert_yaxis()
+    axes[0].spines['top'].set_visible(False)
+    axes[0].spines['right'].set_visible(False)
+    axes[0].grid(axis='x', alpha=0.3, linestyle='--')
+    
+    # Add value labels on bars
+    for i, (bar, value) in enumerate(zip(bars_watched, top_watched['Total Engagement'])):
+        axes[0].text(value, i, f' {value:,.0f}', va='center', fontsize=10, fontweight='bold')
+    
+    # Plot 2: Most Liked Genres
+    bars_liked = axes[1].barh(
+        range(len(top_liked)),
+        top_liked["Favorite Count"],
+        color=cm.plasma(np.linspace(0.2, 0.9, len(top_liked)))
+    )
+    axes[1].set_yticks(range(len(top_liked)))
+    axes[1].set_yticklabels(top_liked["Genre"].values)
+    axes[1].set_xlabel("Favorite Count")
+    axes[1].set_title(f"Top {top_n} Most Liked Genres")
+    axes[1].invert_yaxis()
+    axes[1].spines["top"].set_visible(False)
+    axes[1].spines["right"].set_visible(False)
+    axes[1].grid(axis="x", alpha=0.3, linestyle="--")
+    
     # Add value labels
-    for i, (bar, value) in enumerate(zip(bars, top_genres["Favorite Count"])):
-        ax.text(value, i, f" {int(value):,}", va="center", fontsize=10, fontweight="bold")
-
-    # Make highest rank appear on top
-    ax.invert_yaxis()
-
-    ax.spines["top"].set_visible(False)
-    ax.spines["right"].set_visible(False)
-    ax.grid(axis="x", alpha=0.3, linestyle="--")
-
+    for i, (bar, value) in enumerate(zip(bars_liked, top_liked["Favorite Count"])):
+        axes[1].text(value, i, f" {int(value):,}", va='center', fontsize=10, fontweight='bold')
+    
     plt.tight_layout()
-    return fig, ax
+    
+    return fig, axes
 
 
 def completion_dropout_by_episode_count(min_users=100, figsize=(1400, 700)):
