@@ -145,34 +145,6 @@ def parse_list(s: str) -> List[str]:
     return matches
 
 
-def parse_list_series(series: pd.Series) -> pd.Series:
-    """
-    Vectorized parsing of list strings in a pandas Series.
-
-    Applies parse_list logic to each element in the Series efficiently
-    using a pre-compiled regex pattern.
-
-    Parameters
-    ----------
-    series : pd.Series
-        Pandas Series containing string representations of lists.
-
-    Returns
-    -------
-    pd.Series
-        Series where each element is a parsed list of strings.
-    """
-    # Pre-compile regex
-    pattern = re.compile(r'["\']([^"\']+)["\']')
-
-    def parse_item(s) -> List[str]:
-        if pd.isna(s) or s == "[]" or not s:
-            return []
-        return pattern.findall(s)
-
-    return pd.Series(series.apply(parse_item), index=series.index)
-
-
 def add_count_on_bars(ax, fontsize: int = 9, offset: int = 5) -> None:
     """
     Add count labels on top of bar chart bars.
@@ -211,74 +183,3 @@ def add_count_on_bars(ax, fontsize: int = 9, offset: int = 5) -> None:
                 textcoords="offset points",
             )
     ax.set_ylim(0, max_height * 1.20)
-
-
-def memory_usage_check(df: pd.DataFrame, detailed: bool = False) -> None:
-    """
-    Print memory usage statistics of a DataFrame.
-
-    Parameters
-    ----------
-    df : pd.DataFrame
-        DataFrame to analyze.
-    detailed : bool, optional
-        If True, show per-column memory breakdown with data types,
-        by default False.
-
-    Returns
-    -------
-    None
-        Prints memory usage information to the console.
-    """
-    memory_mb = df.memory_usage(deep=True).sum() / 1024**2
-    print(f"Total memory usage: {memory_mb:.2f} MB")
-
-    if detailed:
-        print("\nPer-column breakdown:")
-        memory_by_col = df.memory_usage(deep=True) / 1024**2
-        for col, mem in memory_by_col.items():
-            col_name = str(col)
-            if col_name == "Index":
-                dtype_str = "Index"
-            else:
-                dtype_str = str(df[col].dtype)
-            print(f"  {col_name:30s} {dtype_str:15s} {mem:8.2f} MB")
-
-
-def optimize_df(
-    df: pd.DataFrame, inplace: bool = False, show_memory: bool = True
-) -> pd.DataFrame:
-    """
-    Complete optimization pipeline for DataFrames.
-
-    Combines downcasting and type conversion optimizations while
-    optionally displaying before/after memory usage statistics.
-
-    Parameters
-    ----------
-    df : pd.DataFrame
-        Input DataFrame to optimize.
-    inplace : bool, optional
-        If True, modify df in place. If False, return optimized copy,
-        by default False.
-    show_memory : bool, optional
-        If True, print before and after memory usage statistics,
-        by default True.
-
-    Returns
-    -------
-    pd.DataFrame
-        Optimized DataFrame. If inplace=True, returns the modified input
-        DataFrame; otherwise returns a new optimized DataFrame.
-    """
-    if show_memory:
-        print("Before optimization:")
-        memory_usage_check(df)
-
-    result = downcast_df(df, inplace=inplace)
-
-    if show_memory:
-        print("\nAfter optimization:")
-        memory_usage_check(result)
-
-    return result
