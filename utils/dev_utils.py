@@ -1,6 +1,7 @@
 import pandas as pd
 import re
 import warnings
+
 warnings.filterwarnings("ignore", category=UserWarning)
 from typing import List
 
@@ -103,12 +104,15 @@ def downcast_df(df: pd.DataFrame, inplace: bool = False) -> pd.DataFrame:
                 continue
 
             # Attempt datetime conversion (only if column name suggests dates)
-            if any(date_hint in col.lower() for date_hint in ["date", "time", "timestamp", "dt"]):
+            if any(
+                date_hint in col.lower()
+                for date_hint in ["date", "time", "timestamp", "dt"]
+            ):
                 converted = pd.to_datetime(col_series, errors="coerce")
                 valid_count = converted.notna().sum()
                 if valid_count / len(df) > 0.8:
-                  df[col] = converted
-                  continue
+                    df[col] = converted
+                    continue
 
             # Convert to category if low cardinality
             n_unique = col_series.nunique(dropna=True)

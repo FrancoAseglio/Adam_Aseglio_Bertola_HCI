@@ -14,6 +14,13 @@ from .character_analysis import (
     voice_actor_character_popularity as _va_popularity,
 )
 
+from .engagement_analysis import (
+    completion_dropout_by_type as _completion_by_type,
+    completion_dropout_by_genre as _completion_by_genre,
+    completion_dropout_by_episode_count as _completion_by_episodes,
+    completion_dropout_distribution as _completion_drop_dist,
+)
+
 # ========================================
 # DATA LOADING (Module-level cache)
 # ========================================
@@ -28,9 +35,7 @@ def _load_data():
 
     INPUT_DIR_PATH = Path("~/datasets/cleaned/").expanduser()
     if not INPUT_DIR_PATH.exists():
-        INPUT_DIR_PATH = Path(
-            "C:\\Users\\Lorenzo\\OneDrive\\Desktop\\datasets\\cleaned\\"
-        )
+        INPUT_DIR_PATH = Path("C:\\Users\\Lorenzo\\OneDrive\\Desktop\\datasets\\cleaned\\")
 
     FILE_EXTENSION = ".csv"
 
@@ -133,3 +138,89 @@ def voice_actor_character_popularity(top_n=10, figsize=(16, 8)):
         top_n=top_n,
         figsize=figsize,
     )
+
+
+# ========================================
+# ENGAGEMENT ANALYSIS FUNCTIONS
+# ========================================
+
+
+def completion_dropout_by_type(figsize=(1400, 600)):
+    """
+    Analyze completion and dropout rates by anime type.
+
+    Parameters
+    ----------
+    figsize : tuple, default=(1400, 600)
+        Figure size in pixels (width, height).
+
+    Returns
+    -------
+    fig : plotly.graph_objects.Figure
+    """
+    data = _load_data()
+
+    return _completion_by_type(data["details_df"], data["stats_df"], figsize=figsize)
+
+
+def completion_dropout_by_genre(top_n_genres=10, figsize=(1400, 700)):
+    """
+    Analyze completion and dropout rates by top anime genres.
+
+    Parameters
+    ----------
+    top_n_genres : int, default=10
+        Number of top genres to display.
+    figsize : tuple, default=(1400, 700)
+        Figure size in pixels (width, height).
+
+    Returns
+    -------
+    fig : plotly.graph_objects.Figure
+    """
+    data = _load_data()
+
+    return _completion_by_genre(data["details_df"], data["stats_df"], top_n=top_n_genres, figsize=figsize)
+
+
+def completion_dropout_by_episode_count(figsize=(1400, 700)):
+    """
+    Analyze completion and dropout rates by anime episode count.
+
+    Parameters
+    ----------
+    figsize : tuple, default=(1400, 700)
+        Figure size in pixels (width, height).
+
+    Returns
+    -------
+    fig : plotly.graph_objects.Figure
+    """
+    data = _load_data()
+
+    return _completion_by_episodes(data["details_df"], data["stats_df"], figsize=figsize)
+
+
+def completion_dropout_distribution(min_members=100, figsize=(1400, 600)):
+    """
+    Analyze and visualize distribution of completion and drop rates across anime.
+
+    Creates an interactive line plot showing how many anime fall into each
+    rate percentage bracket.
+
+    Parameters
+    ----------
+    min_members : int, default=100
+        Minimum total members required for inclusion
+    figsize : tuple, default=(1400, 600)
+        Figure size (width, height) in pixels
+
+    Returns
+    -------
+    fig : plotly.graph_objects.Figure
+        Interactive distribution plot
+    """
+    data = _load_data()
+
+    return _completion_drop_dist(data["stats_df"], min_members=min_members, figsize=figsize)
+
