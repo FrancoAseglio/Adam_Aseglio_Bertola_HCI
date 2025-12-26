@@ -421,7 +421,7 @@ def completion_dropout_distribution(min_members=100, figsize=(1400, 600)):
 # GEOGRAPHIC ANALYSIS FUNCTIONS
 # ========================================
 
-def create_animated_map(profiles_df):
+def create_animated_map():
     """
     Create animated choropleth map showing anime user growth over time.
 
@@ -439,7 +439,7 @@ def create_animated_map(profiles_df):
     return _create_animated_map(data["profiles_df"])
 
 
-def language_vs_geographic_distribution(profiles_df, figsize=(10, 6)):
+def language_vs_geographic_distribution():
     """
     Create a bar chart showing user distribution by primary language.
 
@@ -457,4 +457,4 @@ def language_vs_geographic_distribution(profiles_df, figsize=(10, 6)):
     """
 
     data = _load_data()
-    return _language_vs_geographic_distribution(data["profiles_df"], figsize=figsize)
+    return _language_vs_geographic_distribution(data["profiles_df"], figsize=(10, 6))
