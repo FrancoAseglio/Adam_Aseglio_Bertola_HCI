@@ -40,6 +40,10 @@ from.geo_analysis import (
     language_vs_geographic_distribution as _language_vs_geographic_distribution,
 )
 
+from .recommendation_analysis import (
+    recommendation_genre_cooccurrence as _recommendation_genre_cooccurrence,
+    recommendation_type_patterns as _recommendation_type_patterns,
+)
 
 # ========================================
 # DATA LOADING (Module-level cache)
@@ -458,3 +462,55 @@ def language_vs_geographic_distribution():
 
     data = _load_data()
     return _language_vs_geographic_distribution(data["profiles_df"], figsize=(10, 6))
+
+# ========================================
+# RECOMMENDATION FUNCTIONS
+# ========================================
+
+def recommendation_genre_cooccurrence():
+    """
+    Interactive heatmap showing genre co-occurrence in recommendations.
+
+    Parameters
+    ----------
+    details_df : pd.DataFrame
+    recommendations_df : pd.DataFrame
+    figsize : tuple, default=(1200, 800)
+
+    Returns
+    -------
+    plotly.graph_objects.Figure
+    """
+    data = _load_data()
+
+    fig = _recommendation_genre_cooccurrence(
+        data["details_df"],
+        data["recommendations_df"],
+        figsize=(1200, 800),
+    )
+
+    return fig
+
+def recommendation_type_patterns():
+    """
+    Analyze recommendation patterns based on anime types.
+
+    Parameters
+    ----------
+    details_df : pd.DataFrame
+    recommendations_df : pd.DataFrame
+    figsize : tuple, default=(1400, 700)
+
+    Returns
+    -------
+    fig : plotly.graph_objects.Figure
+    """
+    data = _load_data()
+
+    fig = _recommendation_type_patterns(
+        data["details_df"],
+        data["recommendations_df"],
+        figsize=(1400, 700),
+    )
+
+    return fig

@@ -47,6 +47,11 @@ from .geo_analysis import (
     language_vs_geographic_distribution,
 )
 
+from .recommendation_analysis import (
+    recommendation_genre_cooccurrence,
+    recommendation_type_patterns,
+)
+
 __all__ = [
     # Studio Analysis
     "studio_performance_analysis",
@@ -83,4 +88,8 @@ __all__ = [
     #Geographic Analysis
     "create_animated_map",
     "language_vs_geographic_distribution",
+
+    # Recommendation Analysis
+    "recommendation_genre_cooccurrence",
+    "recommendation_type_patterns",
 ]

@@ -8,7 +8,6 @@ Reusable functions for preparing and processing anime-related datasets.
 import pandas as pd
 import numpy as np
 from utils.geo_utils import get_country_code
-
 from .dev_utils import parse_list
 
 
@@ -435,3 +434,4 @@ def prepare_country_data(profiles_df):
     )
 
     return country_year_counts
+
