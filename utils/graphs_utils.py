@@ -17,6 +17,11 @@ from .episode_analysis import (
     episode_score_correlation_analysis as _episode_correlation,
 )
 
+from .genre_analysis import (
+    genre_comparison_watched_vs_liked as _genre_comparison,
+    genre_evolution_over_time as _genre_evolution,
+)
+
 from .character_analysis import (
     character_popularity_by_role as _char_by_role,
     character_popularity_by_genre_bars as _char_by_genre,
@@ -168,6 +173,74 @@ def episode_score_correlation_analysis(max_episodes=500, figsize=(15, 6)):
 
     return _episode_correlation(
         data["details_df"], data["stats_df"], max_episodes=max_episodes, figsize=figsize
+    )
+
+
+# ========================================
+# GENRE ANALYSIS FUNCTIONS
+# ========================================
+
+
+def genre_comparison_watched_vs_liked(top_n=10, figsize=(24, 10)):
+    """
+    Compare most liked vs most watched genres side-by-side.
+
+    Creates two horizontal bar charts:
+    - Left: Top N most liked (favorited) genres
+    - Right:  Top N most watched (engaged) genres
+
+    Parameters
+    ----------
+    top_n : int, default=10
+        Number of top genres to display
+    figsize :  tuple, default=(24, 6)
+        Figure size (width, height)
+
+    Returns
+    -------
+    fig, axes : matplotlib Figure and Axes array
+    """
+    data = _load_data()
+
+    return _genre_comparison(
+        data["details_df"],
+        data["favs_df"],
+        data["stats_df"],
+        top_n=top_n,
+        figsize=figsize,
+    )
+
+
+def genre_evolution_over_time(top_n=10, year_range=None, smooth=False, figsize=(1400, 700)):
+    """
+    Interactive line chart showing how genre popularity evolves over time.
+    Click on legend items to toggle genres on/off.
+
+    Parameters
+    ----------
+    top_n : int, default=10
+        Number of top genres to display
+    year_range :  tuple, optional
+        (start_year, end_year) to limit the time range, e.g., (2010, 2023)
+    smooth : bool, default=False
+        Apply 3-year moving average to reduce noise
+    figsize : tuple, default=(1400, 700)
+        Figure size in pixels (width, height)
+
+    Returns
+    -------
+    fig : plotly.graph_objects. Figure
+        Interactive line chart
+    """
+    data = _load_data()
+
+    return _genre_evolution(
+        data["details_df"],
+        data["stats_df"],
+        top_n=top_n,
+        year_range=year_range,
+        figsize=figsize,
+        smooth=smooth,
     )
 
 

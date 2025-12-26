@@ -198,6 +198,33 @@ def prepare_episode_score_data(
 
 
 # ------------------------------
+# GENRE DATA PREPARATION
+# ------------------------------
+
+
+def fill_missing_years(df):
+    """Fill missing years for each genre to avoid line gaps."""
+
+    all_years = range(int(df["year"].min()), int(df["year"].max()) + 1)
+    genres = df["genres_list"].unique()
+
+    complete_data = []
+    for genre in genres:
+        genre_data = df[df["genres_list"] == genre]
+        full_index = pd.DataFrame({"year": list(all_years), "genres_list": genre})
+        genre_complete = full_index.merge(
+            genre_data, on=["year", "genres_list"], how="left"
+        )
+        genre_complete["popularity"] = genre_complete["popularity"].fillna(0)
+        genre_complete["anime_count"] = (
+            genre_complete["anime_count"].fillna(0).astype(int)
+        )
+        complete_data.append(genre_complete)
+
+    return pd.concat(complete_data, ignore_index=True)
+
+
+# ------------------------------
 # CHARACTER DATA PREPARATION
 # ------------------------------
 

@@ -12,6 +12,11 @@ from .episode_analysis import (
     episode_score_correlation_analysis,
 )
 
+from .genre_analysis import (
+    genre_comparison_watched_vs_liked,
+    genre_evolution_over_time,
+)
+
 from .character_analysis import (
     character_popularity_by_role,
     character_popularity_by_genre_bars,
@@ -44,6 +49,10 @@ __all__ = [
     # Episode Analysis
     "anime_distribution_by_episode_range",
     "episode_score_correlation_analysis",
+
+    # Genre Analysis
+    "genre_comparison_watched_vs_liked",
+    "genre_evolution_over_time",
 
     # Character Analysis
     "character_popularity_by_role",

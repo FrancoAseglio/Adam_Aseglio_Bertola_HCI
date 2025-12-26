@@ -125,6 +125,93 @@ def create_grouped_bar_chart(
     return fig
 
 
+def create_horizontal_bar_chart(
+    data,
+    y_col,
+    x_col,
+    title,
+    x_title,
+    y_title,
+    figsize=(12, 8),
+    colormap="plasma",
+    add_labels=True,
+    invert_y=True,
+    ax=None,
+):
+    """
+    Create a horizontal bar chart with Matplotlib.
+
+    Parameters
+    ----------
+    data : pd.DataFrame
+        Data to visualize (should be pre-sorted)
+    y_col : str
+        Column for y-axis (categories)
+    x_col : str
+        Column for x-axis (values)
+    title : str
+        Chart title
+    x_title : str
+        X-axis label
+    y_title :  str
+        Y-axis label
+    figsize : tuple, default=(12, 8)
+        Figure size (width, height)
+    colormap : str, default="plasma"
+        Matplotlib colormap name
+    add_labels : bool, default=True
+        Whether to add value labels on bars
+    invert_y : bool, default=True
+        Whether to invert y-axis (top = highest)
+    ax : matplotlib.axes.Axes, optional
+        Axes to plot on. If None, creates new figure.
+
+    Returns
+    -------
+    matplotlib.figure.Figure, matplotlib.axes.Axes
+    """
+    # Create figure only if ax not provided
+    if ax is None:
+        fig, ax = plt.subplots(figsize=figsize)
+    else:
+        fig = ax.get_figure()
+
+    cmap = getattr(cm, colormap)
+    colors = cmap(np.linspace(0.3, 0.9, len(data)))
+
+    bars = ax.barh(range(len(data)), data[x_col], color=colors)
+
+    ax.set_yticks(range(len(data)))
+    ax.set_yticklabels(data[y_col].values)
+    ax.set_xlabel(x_title, fontsize=12, fontweight="bold")
+    ax.set_title(title, fontsize=14, fontweight="bold", pad=20)
+
+    if add_labels:
+        for i, (bar, value) in enumerate(zip(bars, data[x_col])):
+            # Format based on value size
+            if value >= 1000:
+                label = f" {int(value):,}"
+            else:
+                label = f" {value:. 1f}"
+
+            ax.text(
+                value, i, label, va="center", ha="left", fontsize=10, fontweight="bold"
+            )
+
+    if invert_y:
+        ax.invert_yaxis()
+
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    ax.grid(axis="x", alpha=0.3, linestyle="--")
+
+    # Only call tight_layout if we created the figure
+    if ax is None:
+        plt.tight_layout()
+
+    return fig, ax
+
+
 def create_dual_bar_chart(
     data,
     x_col,
