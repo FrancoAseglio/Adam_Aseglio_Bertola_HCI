@@ -6,6 +6,7 @@ Reusable Plotly and Matplotlib visualization builders.
 """
 
 import numpy as np
+import matplotlib.cm as cm
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 
@@ -429,3 +430,101 @@ def create_dual_line_distribution(
     )
 
     return fig
+
+
+def create_dual_horizontal_bar_chart(
+    data_left,
+    data_right,
+    y_col,
+    x_cols,
+    titles,
+    x_titles,
+    colors,
+    figsize=(16, 8),
+    x_limits=None,
+    colormap_left="viridis_r",
+    colormap_right="plasma_r",
+):
+    """
+    Create side-by-side horizontal bar charts with different metrics.
+
+    Parameters
+    ----------
+    data_left : pd.DataFrame
+        Data for left chart (pre-sorted)
+    data_right : pd. DataFrame
+        Data for right chart (pre-sorted)
+    y_col : str
+        Column name for y-axis labels (should exist after reset_index)
+    x_cols : list of str
+        Column names for x-axis values [left_col, right_col]
+    titles : list of str
+        Titles for each chart [left_title, right_title]
+    x_titles : list of str
+        X-axis labels [left_label, right_label]
+    colors : list of str
+        Base colors [left_color, right_color]
+    figsize : tuple, default=(16, 8)
+        Figure size (width, height)
+    x_limits : list of tuple, optional
+        X-axis limits [(left_min, left_max), (right_min, right_max)]
+    colormap_left : str, default='viridis_r'
+        Colormap for left chart
+    colormap_right : str, default='plasma_r'
+        Colormap for right chart
+
+    Returns
+    -------
+    matplotlib.figure.Figure, np.ndarray of matplotlib.axes.Axes
+    """
+    fig, axes = plt.subplots(1, 2, figsize=figsize)
+
+    # Prepare data (sort for display)
+    data_left_sorted = data_left.sort_values(x_cols[0], ascending=True)
+    data_right_sorted = data_right.sort_values(x_cols[1], ascending=True)
+
+    # Get colormaps
+    cmap_left = getattr(cm, colormap_left)
+    cmap_right = getattr(cm, colormap_right)
+
+    colors_left = cmap_left(np.linspace(0.3, 0.9, len(data_left_sorted)))
+    colors_right = cmap_right(np.linspace(0.3, 0.9, len(data_right_sorted)))
+
+    # Left chart
+    axes[0].barh(
+        range(len(data_left_sorted)),
+        data_left_sorted[x_cols[0]],
+        color=colors_left,
+    )
+    axes[0].set_yticks(range(len(data_left_sorted)))
+    axes[0].set_yticklabels(data_left_sorted[y_col].values)
+    axes[0].set_xlabel(x_titles[0], fontsize=12, fontweight="bold")
+    axes[0].set_title(titles[0], fontsize=12, fontweight="bold")
+    axes[0].grid(axis="x", linestyle="--", alpha=0.6)
+    axes[0].spines["top"].set_visible(False)
+    axes[0].spines["right"].set_visible(False)
+
+    # Right chart
+    axes[1].barh(
+        range(len(data_right_sorted)),
+        data_right_sorted[x_cols[1]],
+        color=colors_right,
+    )
+    axes[1].set_yticks(range(len(data_right_sorted)))
+    axes[1].set_yticklabels(data_right_sorted[y_col].values)
+    axes[1].set_xlabel(x_titles[1], fontsize=12, fontweight="bold")
+    axes[1].set_title(titles[1], fontsize=12, fontweight="bold")
+    axes[1].grid(axis="x", linestyle="--", alpha=0.6)
+    axes[1].spines["top"].set_visible(False)
+    axes[1].spines["right"].set_visible(False)
+
+    # Apply x-axis limits if provided
+    if x_limits:
+        if x_limits[0]:
+            axes[0].set_xlim(x_limits[0])
+        if x_limits[1]:
+            axes[1].set_xlim(x_limits[1])
+
+    plt.tight_layout()
+
+    return fig, axes

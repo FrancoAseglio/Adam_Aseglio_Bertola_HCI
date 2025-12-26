@@ -3,6 +3,15 @@ Anime Analysis Utilities Package
 =================================
 """
 
+from .studio_analysis import (
+    studio_performance_analysis,
+)
+
+from .episode_analysis import (
+    anime_distribution_by_episode_range,
+    episode_score_correlation_analysis,
+)
+
 from .character_analysis import (
     character_popularity_by_role,
     character_popularity_by_genre_bars,
@@ -14,11 +23,6 @@ from .engagement_analysis import (
     completion_dropout_by_genre,
     completion_dropout_by_episode_count,
     completion_dropout_distribution,
-)
-
-from .episode_analysis import (
-    anime_distribution_by_episode_range,
-    episode_score_correlation_analysis,
 )
 
 from .data_prep import (
@@ -34,6 +38,13 @@ from .viz_components import (
 )
 
 __all__ = [
+    # Studio Analysis
+    "studio_performance_analysis",
+
+    # Episode Analysis
+    "anime_distribution_by_episode_range",
+    "episode_score_correlation_analysis",
+
     # Character Analysis
     "character_popularity_by_role",
     "character_popularity_by_genre_bars",
@@ -44,10 +55,6 @@ __all__ = [
     "completion_dropout_by_genre",
     "completion_dropout_by_episode_count",
     "completion_dropout_distribution",
-
-    # Episode Analysis
-    "anime_distribution_by_episode_range",
-    "episode_score_correlation_analysis",
 
     # Data Preparation
     "prepare_engagement_data",

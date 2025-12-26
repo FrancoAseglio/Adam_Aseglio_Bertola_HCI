@@ -8,6 +8,15 @@ High-level wrapper functions that load data and call analysis functions.
 import pandas as pd
 from pathlib import Path
 
+from .studio_analysis import (
+    studio_performance_analysis as _studio_performance,
+)
+
+from .episode_analysis import (
+    anime_distribution_by_episode_range as _episode_distribution,
+    episode_score_correlation_analysis as _episode_correlation,
+)
+
 from .character_analysis import (
     character_popularity_by_role as _char_by_role,
     character_popularity_by_genre_bars as _char_by_genre,
@@ -21,10 +30,6 @@ from .engagement_analysis import (
     completion_dropout_distribution as _completion_drop_dist,
 )
 
-from .episode_analysis import (
-    anime_distribution_by_episode_range as _episode_distribution,
-    episode_score_correlation_analysis as _episode_correlation,
-)
 
 # ========================================
 # DATA LOADING (Module-level cache)
@@ -61,7 +66,7 @@ def _load_data():
 
 
 # ========================================
-# UTILITY: Clear data cache
+# DATA CLEANING: Clear data cache
 # ========================================
 
 
@@ -71,6 +76,44 @@ def clear_cache():
     global _DATA_CACHE
     _DATA_CACHE = {}
     print("✓ Data cache cleared")
+
+
+# ========================================
+# STUDIOS ANALYSIS FUNCTIONS
+# ========================================
+
+
+def studio_performance_analysis(min_anime_threshold=5, top_n=10, figsize=(16, 8)):
+    """
+    Analyze anime studios by productivity and quality.
+    
+    Shows:
+    - Left: Top studios by number of anime produced (prolific)
+    - Right: Top studios by average score (quality)
+    
+    Parameters
+    ----------
+    min_anime_threshold :  int, default=5
+        Minimum number of anime for a studio to be included
+    top_n :  int, default=10
+        Number of top studios to display in each chart
+    figsize : tuple, default=(16, 8)
+        Figure size (width, height)
+    
+    Returns
+    -------
+    fig, axes : matplotlib figure and axes objects
+    studio_analysis : DataFrame with studio metrics
+    """
+    data = _load_data()
+    
+    return _studio_performance(
+        data["details_df"],
+        data["stats_df"],
+        min_anime_threshold=min_anime_threshold,
+        top_n=top_n,
+        figsize=figsize,
+    )
 
 
 # ========================================
@@ -272,11 +315,6 @@ def completion_dropout_by_episode_count(figsize=(1400, 700)):
     data = _load_data()
 
     return _completion_by_episodes(data["details_df"], data["stats_df"], figsize=figsize)
-
-
-# ========================================
-# USER BEHAVIOR ANALYSIS FUNCTIONS
-# ========================================
 
 
 def completion_dropout_distribution(min_members=100, figsize=(1400, 600)):

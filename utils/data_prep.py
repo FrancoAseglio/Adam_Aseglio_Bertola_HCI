@@ -11,120 +11,9 @@ import numpy as np
 from .dev_utils import parse_list
 
 
-def prepare_character_favorites(characters_df, favs_df):
-    """
-    Calculate total character favorites (platform + user favorites).
-
-    Parameters
-    ----------
-    characters_df : pd.DataFrame
-        Character details dataset
-    favs_df : pd.DataFrame
-        User favorites dataset
-
-    Returns
-    -------
-    pd.DataFrame
-        Character data with total_favs column
-    """
-    char_favs = favs_df[favs_df["fav_type"] == "character"].copy()
-    char_fav_counts = char_favs.groupby("id").size().reset_index(name="user_favs")
-
-    char_popularity = characters_df.merge(
-        char_fav_counts, left_on="character_mal_id", right_on="id", how="left"
-    )
-    char_popularity["user_favs"] = char_popularity["user_favs"].fillna(0)
-    char_popularity["total_favs"] = (
-        char_popularity["favorites"].fillna(0) + char_popularity["user_favs"]
-    )
-
-    return char_popularity[["character_mal_id", "name", "total_favs"]]
-
-
-def explode_genres(df, genre_column="genres"):
-    """
-    Parse and explode genre column into separate rows.
-
-    Parameters
-    ----------
-    df : pd.DataFrame
-        DataFrame with genre column
-    genre_column : str, default="genres"
-        Name of column containing comma-separated genres
-
-    Returns
-    -------
-    pd.DataFrame
-        DataFrame with genres_list column exploded
-    """
-    df = df.copy()
-    df["genres_list"] = df[genre_column].apply(parse_list)
-    exploded = df.explode("genres_list")
-
-    return exploded[exploded["genres_list"] != ""]
-
-
-def prepare_engagement_data(
-    details_df, stats_df, min_users=0, include_rates=True, include_episodes=False
-):
-    """
-    Prepare base anime engagement data with started users and rates.
-
-    Parameters
-    ----------
-    details_df : pd.DataFrame
-        Anime details dataset
-    stats_df : pd.DataFrame
-        Anime statistics dataset
-    min_users : int, default=0
-        Minimum started users threshold
-    include_rates : bool, default=True
-        Whether to calculate completion/dropout rates
-    include_episodes : bool, default=False
-        Whether to include episode count column
-
-    Returns
-    -------
-    pd.DataFrame
-        Merged dataset with engagement metrics
-    """
-    cols = ["mal_id", "title", "type", "genres", "score"]
-    if include_episodes:
-        cols.append("episodes")
-
-    anime_engagement = details_df[cols].merge(
-        stats_df[["mal_id", "watching", "completed", "on_hold", "dropped"]],
-        on="mal_id",
-        how="inner",
-    )
-
-    anime_engagement["started_users"] = (
-        anime_engagement["watching"]
-        + anime_engagement["completed"]
-        + anime_engagement["on_hold"]
-        + anime_engagement["dropped"]
-    )
-
-    if min_users > 0:
-        anime_engagement = anime_engagement[
-            anime_engagement["started_users"] >= min_users
-        ].copy()
-
-    if include_rates:
-        anime_engagement["completion_rate"] = (
-            anime_engagement["completed"] / anime_engagement["started_users"] * 100
-        )
-        anime_engagement["dropout_rate"] = (
-            anime_engagement["dropped"] / anime_engagement["started_users"] * 100
-        )
-        anime_engagement["watching_rate"] = (
-            anime_engagement["watching"] / anime_engagement["started_users"] * 100
-        )
-        anime_engagement["on_hold_rate"] = (
-            anime_engagement["on_hold"] / anime_engagement["started_users"] * 100
-        )
-
-    return anime_engagement
+# ------------------------------
+# STUDIO DATA PREPARATION
+# ------------------------------
 
 
 def aggregate_by_dimension(data, groupby_col, agg_cols):
@@ -152,6 +41,67 @@ def aggregate_by_dimension(data, groupby_col, agg_cols):
         stats.columns = ["_".join(col).strip("_") for col in stats.columns.values]
 
     return stats
+
+
+def prepare_studio_data(details_df, stats_df, min_anime_threshold=5):
+    """
+    Prepare studio performance data with productivity and quality metrics.
+
+    Parameters
+    ----------
+    details_df : pd.DataFrame
+        Anime details with 'mal_id', 'studios', 'score' columns
+    stats_df : pd.DataFrame
+        Anime statistics with 'mal_id' column
+    min_anime_threshold :  int, default=5
+        Minimum number of anime for a studio to be included
+
+    Returns
+    -------
+    pd.DataFrame
+        Studio analysis data with columns:  Studio, Avg Score, Count
+        Sorted by Count descending
+    """
+    from .dev_utils import parse_list
+
+    # Merge datasets
+    df = details_df.merge(stats_df, on="mal_id", how="inner")
+
+    # Parse studios from studios column
+    df["studios_list"] = df["studios"].astype(str).apply(parse_list)
+
+    # Explode to have one row per studio
+    studio_df = df.explode("studios_list")
+
+    # Remove empty studios
+    studio_df = studio_df[
+        (studio_df["studios_list"] != "") & (studio_df["studios_list"].notna())
+    ].copy()
+
+    # Aggregate by studio
+    studio_analysis = (
+        studio_df.groupby("studios_list")
+        .agg({"score": "mean", "mal_id": "count"})
+        .round(2)
+        .reset_index()
+    )
+
+    studio_analysis.columns = ["Studio", "Avg Score", "Count"]
+
+    # Filter studios with sufficient sample size
+    studio_analysis = studio_analysis[
+        studio_analysis["Count"] >= min_anime_threshold
+    ].copy()
+
+    # Sort by count (most prolific first)
+    studio_analysis = studio_analysis.sort_values("Count", ascending=False)
+
+    return studio_analysis
+
+
+# ------------------------------
+# EPISODE DATA PREPARATION
+# ------------------------------
 
 
 def bin_episodes(df, bins=None, labels=None):
@@ -245,6 +195,132 @@ def prepare_episode_score_data(
     )
 
     return df
+
+
+# ------------------------------
+# CHARACTER DATA PREPARATION
+# ------------------------------
+
+
+def prepare_character_favorites(characters_df, favs_df):
+    """
+    Calculate total character favorites (platform + user favorites).
+
+    Parameters
+    ----------
+    characters_df : pd.DataFrame
+        Character details dataset
+    favs_df : pd.DataFrame
+        User favorites dataset
+
+    Returns
+    -------
+    pd.DataFrame
+        Character data with total_favs column
+    """
+    char_favs = favs_df[favs_df["fav_type"] == "character"].copy()
+    char_fav_counts = char_favs.groupby("id").size().reset_index(name="user_favs")
+
+    char_popularity = characters_df.merge(
+        char_fav_counts, left_on="character_mal_id", right_on="id", how="left"
+    )
+    char_popularity["user_favs"] = char_popularity["user_favs"].fillna(0)
+    char_popularity["total_favs"] = (
+        char_popularity["favorites"].fillna(0) + char_popularity["user_favs"]
+    )
+
+    return char_popularity[["character_mal_id", "name", "total_favs"]]
+
+
+def explode_genres(df, genre_column="genres"):
+    """
+    Parse and explode genre column into separate rows.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        DataFrame with genre column
+    genre_column : str, default="genres"
+        Name of column containing comma-separated genres
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with genres_list column exploded
+    """
+    df = df.copy()
+    df["genres_list"] = df[genre_column].apply(parse_list)
+    exploded = df.explode("genres_list")
+
+    return exploded[exploded["genres_list"] != ""]
+
+
+# ------------------------------
+# ENGAGEMENT DATA PREPARATION
+# ------------------------------
+
+
+def prepare_engagement_data(
+    details_df, stats_df, min_users=0, include_rates=True, include_episodes=False
+):
+    """
+    Prepare base anime engagement data with started users and rates.
+
+    Parameters
+    ----------
+    details_df : pd.DataFrame
+        Anime details dataset
+    stats_df : pd.DataFrame
+        Anime statistics dataset
+    min_users : int, default=0
+        Minimum started users threshold
+    include_rates : bool, default=True
+        Whether to calculate completion/dropout rates
+    include_episodes : bool, default=False
+        Whether to include episode count column
+
+    Returns
+    -------
+    pd.DataFrame
+        Merged dataset with engagement metrics
+    """
+    cols = ["mal_id", "title", "type", "genres", "score"]
+    if include_episodes:
+        cols.append("episodes")
+
+    anime_engagement = details_df[cols].merge(
+        stats_df[["mal_id", "watching", "completed", "on_hold", "dropped"]],
+        on="mal_id",
+        how="inner",
+    )
+
+    anime_engagement["started_users"] = (
+        anime_engagement["watching"]
+        + anime_engagement["completed"]
+        + anime_engagement["on_hold"]
+        + anime_engagement["dropped"]
+    )
+
+    if min_users > 0:
+        anime_engagement = anime_engagement[
+            anime_engagement["started_users"] >= min_users
+        ].copy()
+
+    if include_rates:
+        anime_engagement["completion_rate"] = (
+            anime_engagement["completed"] / anime_engagement["started_users"] * 100
+        )
+        anime_engagement["dropout_rate"] = (
+            anime_engagement["dropped"] / anime_engagement["started_users"] * 100
+        )
+        anime_engagement["watching_rate"] = (
+            anime_engagement["watching"] / anime_engagement["started_users"] * 100
+        )
+        anime_engagement["on_hold_rate"] = (
+            anime_engagement["on_hold"] / anime_engagement["started_users"] * 100
+        )
+
+    return anime_engagement
 
 
 def prepare_completion_drop_data(stats_df, min_members=100):
