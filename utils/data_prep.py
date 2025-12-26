@@ -7,6 +7,7 @@ Reusable functions for preparing and processing anime-related datasets.
 
 import pandas as pd
 import numpy as np
+from utils.geo_utils import get_country_code
 
 from .dev_utils import parse_list
 
@@ -390,3 +391,47 @@ def prepare_completion_drop_data(stats_df, min_members=100):
     ) * 100
 
     return stats_filtered
+
+# ------------------------------
+# GEOGRAPHIC DATA PREPARATION
+# ------------------------------
+
+def prepare_country_data(profiles_df):
+    """
+    Prepare geographic distribution data with country codes.
+
+    Parameters
+    ----------
+    profiles_df : pd.DataFrame
+        User profiles with location data
+
+    Returns
+    -------
+    pd.DataFrame
+        Aggregated country-year statistics
+    """
+
+    profiles_df = profiles_df.copy()
+    profiles_df["year_label"] = pd.to_datetime(
+        profiles_df["joined"], errors="coerce"
+    ).dt.year
+    profiles_df[["country", "country_code"]] = profiles_df["location"].apply(
+        lambda x: pd.Series(get_country_code(x))
+    )
+
+    profiles_with_country = profiles_df[profiles_df["country_code"].notna()].copy()
+    country_year_counts = (
+        profiles_with_country.groupby(["country", "country_code", "year_label"])
+        .size()
+        .reset_index(name="user_count")
+    )
+
+    country_year_counts = country_year_counts.sort_values(["country", "year_label"])
+    country_year_counts["cumulative_users"] = country_year_counts.groupby("country")[
+        "user_count"
+    ].cumsum()
+    country_year_counts["log_cumulative"] = np.log10(
+        country_year_counts["cumulative_users"] + 1
+    )
+
+    return country_year_counts

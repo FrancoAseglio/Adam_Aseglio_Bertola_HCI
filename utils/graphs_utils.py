@@ -35,6 +35,11 @@ from .engagement_analysis import (
     completion_dropout_distribution as _completion_drop_dist,
 )
 
+from.geo_analysis import (
+    create_animated_map as _create_animated_map,    
+    language_vs_geographic_distribution as _language_vs_geographic_distribution,
+)
+
 
 # ========================================
 # DATA LOADING (Module-level cache)
@@ -411,3 +416,45 @@ def completion_dropout_distribution(min_members=100, figsize=(1400, 600)):
     data = _load_data()
 
     return _completion_drop_dist(data["stats_df"], min_members=min_members, figsize=figsize)
+
+# ========================================
+# GEOGRAPHIC ANALYSIS FUNCTIONS
+# ========================================
+
+def create_animated_map(profiles_df):
+    """
+    Create animated choropleth map showing anime user growth over time.
+
+    Parameters
+    ----------
+    profiles_df : pd.DataFrame
+        User profiles with location and joined date
+
+    Returns
+    -------
+    plotly.graph_objects.Figure
+    """
+
+    data = _load_data()
+    return _create_animated_map(data["profiles_df"])
+
+
+def language_vs_geographic_distribution(profiles_df, figsize=(10, 6)):
+    """
+    Create a bar chart showing user distribution by primary language.
+
+    Parameters
+    ----------
+    profiles_df : pd.DataFrame
+        User profiles with location and primary language
+    figsize : tuple, default=(10, 6)
+        Figure size (width, height)
+
+    Returns
+    -------
+    fig : matplotlib Figure
+    ax : matplotlib Axes
+    """
+
+    data = _load_data()
+    return _language_vs_geographic_distribution(data["profiles_df"], figsize=figsize)

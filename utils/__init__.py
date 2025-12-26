@@ -42,6 +42,11 @@ from .viz_components import (
     create_dual_line_distribution,
 )
 
+from .geo_analysis import (
+    create_animated_map,
+    language_vs_geographic_distribution,
+)
+
 __all__ = [
     # Studio Analysis
     "studio_performance_analysis",
@@ -74,4 +79,8 @@ __all__ = [
 
     # Visualization Components
     "create_dual_line_distribution",
+
+    #Geographic Analysis
+    "create_animated_map",
+    "language_vs_geographic_distribution",
 ]
