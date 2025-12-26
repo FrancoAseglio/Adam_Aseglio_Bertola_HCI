@@ -6,6 +6,7 @@ Reusable Plotly and Matplotlib visualization builders.
 """
 
 import numpy as np
+import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 
 
@@ -121,6 +122,213 @@ def create_grouped_bar_chart(
     )
 
     return fig
+
+
+def create_dual_bar_chart(
+    data,
+    x_col,
+    y_cols,
+    titles,
+    y_titles,
+    colors,
+    figsize=(14, 5),
+    bar_label_formats=None,
+    y_limits=None,
+):
+    """
+    Create side-by-side bar charts with Matplotlib.
+
+    Parameters
+    ----------
+    data : pd.DataFrame
+        Data to visualize
+    x_col : str
+        Column for x-axis (categories)
+    y_cols : list of str
+        Two columns for y-axis values [left_plot, right_plot]
+    titles : list of str
+        Two titles [left_title, right_title]
+    y_titles : list of str
+        Two y-axis labels [left_label, right_label]
+    colors : list of str
+        Two colors [left_color, right_color]
+    figsize : tuple, default=(14, 5)
+        Figure size (width, height)
+    bar_label_formats : list of str, optional
+        Format strings for bar labels [left_format, right_format]
+        e.g., ['{: ,.0f}', '{:. 2f}']
+    y_limits : list of tuple, optional
+        Y-axis limits [(left_min, left_max), (right_min, right_max)]
+
+    Returns
+    -------
+    matplotlib.figure.Figure, np.ndarray of matplotlib.axes.Axes
+    """
+    fig, axes = plt.subplots(1, 2, figsize=figsize)
+
+    if bar_label_formats is None:
+        bar_label_formats = ["{:,.0f}", "{:. 2f}"]
+
+    for idx, (ax, y_col, title, y_title, color, label_fmt) in enumerate(
+        zip(axes, y_cols, titles, y_titles, colors, bar_label_formats)
+    ):
+        # Create bars
+        ax.bar(
+            range(len(data)), data[y_col], color=color, edgecolor="none", linewidth=0
+        )
+
+        # Set ticks and labels
+        ax.set_xticks(range(len(data)))
+        ax.set_xticklabels(data[x_col], rotation=45, ha="right")
+        ax.set_title(title, fontsize=12, fontweight="bold")
+        ax.set_xlabel("Episode Range")
+        ax.set_ylabel(y_title)
+        ax.grid(axis="y", linestyle="--", alpha=0.6)
+        ax.spines["top"].set_visible(False)
+        ax.spines["right"].set_visible(False)
+
+        # Add bar labels
+        for i, (bar, value) in enumerate(zip(ax.patches, data[y_col])):
+            ax.text(
+                bar.get_x() + bar.get_width() / 2.0,
+                bar.get_height(),
+                label_fmt.format(value),
+                ha="center",
+                va="bottom",
+                fontsize=9,
+                fontweight="bold",
+                color="black",
+            )
+
+        # Set y-axis limits
+        if y_limits and y_limits[idx]:
+            ax.set_ylim(y_limits[idx])
+        else:
+            # Auto-adjust with padding
+            max_val = data[y_col].max()
+            ax.set_ylim(0, max_val * 1.15)
+
+    plt.tight_layout()
+
+    return fig, axes
+
+
+def create_hexbin_violin_plot(
+    data,
+    x_col,
+    y_col,
+    category_col,
+    title_left,
+    title_right,
+    x_title,
+    y_title,
+    figsize=(15, 6),
+    gridsize=30,
+    palette="viridis",
+):
+    """
+    Create hexbin density plot and violin plot side-by-side.
+
+    Parameters
+    ----------
+    data :  pd.DataFrame
+        Data to visualize
+    x_col : str
+        Column for x-axis (continuous variable)
+    y_col : str
+        Column for y-axis (continuous variable)
+    category_col : str
+        Column for categorical grouping (violin plot)
+    title_left : str
+        Title for hexbin plot (left)
+    title_right : str
+        Title for violin plot (right)
+    x_title : str
+        X-axis label
+    y_title : str
+        Y-axis label
+    figsize : tuple, default=(15, 6)
+        Figure size (width, height)
+    gridsize : int, default=30
+        Hexbin grid size
+    palette :  str, default="viridis"
+        Seaborn color palette
+
+    Returns
+    -------
+    matplotlib.figure.Figure, np.ndarray of matplotlib.axes.Axes
+    correlation_stats : dict
+        Dictionary with 'pearson_r', 'interpretation', 'n_samples'
+    """
+    import seaborn as sns
+    from scipy.stats import pearsonr
+
+    fig, axes = plt.subplots(1, 2, figsize=figsize)
+
+    # Calculate correlation
+    correlation = data[x_col].corr(data[y_col])
+    abs_corr = abs(correlation)
+
+    if abs_corr < 0.3:
+        interpretation = "Weak"
+    elif abs_corr < 0.7:
+        interpretation = "Moderate"
+    else:
+        interpretation = "Strong"
+
+    # Plot 1: Hexbin Density Heatmap
+    hb = axes[0].hexbin(
+        data[x_col],
+        data[y_col],
+        gridsize=gridsize,
+        bins="log",
+        cmap="YlGnBu",
+        xscale="log",
+        mincnt=1,
+    )
+
+    axes[0].set_title(
+        f"{title_left}\n(Pearson r = {correlation:.3f})", fontweight="bold", fontsize=12
+    )
+    axes[0].set_xlabel(f"{x_title} (Log Scale)")
+    axes[0].set_ylabel(y_title)
+    axes[0].grid(alpha=0.3)
+    axes[0].spines["top"].set_visible(False)
+    axes[0].spines["right"].set_visible(False)
+
+    # Add colorbar
+    cbar = fig.colorbar(hb, ax=axes[0], label="Concentration (Log Scale)")
+
+    # Plot 2: Violin Plot
+    sns.violinplot(
+        data=data,
+        x=category_col,
+        y=y_col,
+        hue=category_col,
+        palette=palette,
+        inner="quartile",
+        ax=axes[1],
+        legend=False,
+    )
+
+    axes[1].set_title(title_right, fontweight="bold", fontsize=12)
+    axes[1].set_xlabel("Episode Range")
+    axes[1].set_ylabel(y_title)
+    axes[1].tick_params(axis="x", rotation=45)
+    axes[1].grid(axis="y", alpha=0.3)
+    axes[1].spines["top"].set_visible(False)
+    axes[1].spines["right"].set_visible(False)
+
+    plt.tight_layout()
+
+    # Correlation statistics
+    correlation_stats = {
+        "pearson_r": round(correlation, 4),
+        "interpretation": interpretation,
+        "n_samples": len(data),
+    }
+
+    return fig, axes, correlation_stats
 
 
 def create_dual_line_distribution(

@@ -195,6 +195,58 @@ def bin_episodes(df, bins=None, labels=None):
     return df
 
 
+def prepare_episode_score_data(
+    details_df, stats_df, max_episodes=500, bins=None, labels=None
+):
+    """
+    Prepare anime data with episode categorization for score analysis.
+
+    Parameters
+    ----------
+    details_df : pd.DataFrame
+        Anime details with 'mal_id', 'episodes', 'score', 'title' columns
+    stats_df : pd.DataFrame
+        Anime statistics with 'mal_id' column
+    max_episodes : int, default=500
+        Maximum episode count to include (filters outliers)
+    bins : list, optional
+        Custom bin edges for episode categories.
+        Default:  [0, 1, 12, 24, 50, 100, 500]
+    labels : list, optional
+        Custom labels for episode categories.
+        Default: ["Single", "2-12", "13-24", "25-50", "51-100", "100+"]
+
+    Returns
+    -------
+    pd.DataFrame
+        Merged and categorized data with 'episode_category' column
+    """
+    # Set defaults
+    if bins is None:
+        bins = [0, 1, 12, 24, 50, 100, 500]
+
+    if labels is None:
+        labels = ["Single", "2-12", "13-24", "25-50", "51-100", "100+"]
+
+    # Merge datasets
+    df = details_df.merge(stats_df, on="mal_id", how="inner")
+
+    # Filter valid data
+    df = df[
+        (df["episodes"].notna())
+        & (df["episodes"] > 0)
+        & (df["episodes"] < max_episodes)
+        & (df["score"].notna())
+    ].copy()
+
+    # Categorize by episode count
+    df["episode_category"] = pd.cut(
+        df["episodes"], bins=bins, labels=labels, include_lowest=True
+    )
+
+    return df
+
+
 def prepare_completion_drop_data(stats_df, min_members=100):
     """
     Prepare completion and drop rate data for distribution analysis.

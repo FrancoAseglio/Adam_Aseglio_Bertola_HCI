@@ -21,6 +21,11 @@ from .engagement_analysis import (
     completion_dropout_distribution as _completion_drop_dist,
 )
 
+from .episode_analysis import (
+    anime_distribution_by_episode_range as _episode_distribution,
+    episode_score_correlation_analysis as _episode_correlation,
+)
+
 # ========================================
 # DATA LOADING (Module-level cache)
 # ========================================
@@ -53,6 +58,74 @@ def _load_data():
     _DATA_CACHE["stats_df"] = pd.read_csv(INPUT_DIR_PATH / f"stats_clean{FILE_EXTENSION}")
 
     return _DATA_CACHE
+
+
+# ========================================
+# UTILITY: Clear data cache
+# ========================================
+
+
+def clear_cache():
+    """Clear the data cache to free memory or force reload."""
+
+    global _DATA_CACHE
+    _DATA_CACHE = {}
+    print("✓ Data cache cleared")
+
+
+# ========================================
+# EPISODE ANALYSIS FUNCTIONS
+# ========================================
+
+
+def anime_distribution_by_episode_range(figsize=(14, 5)):
+    """
+    Analyze and visualize anime distribution and average scores by episode ranges.
+
+    Creates two side-by-side bar charts:
+    - Left: Number of anime in each episode range
+    - Right: Average score for each episode range
+
+    Parameters
+    ----------
+    figsize : tuple, default=(14, 5)
+        Figure size (width, height)
+
+    Returns
+    -------
+    fig, axes : matplotlib Figure and Axes array
+    """
+    data = _load_data()
+
+    return _episode_distribution(data["details_df"], data["stats_df"], figsize=figsize)
+
+
+def episode_score_correlation_analysis(max_episodes=500, figsize=(15, 6)):
+    """
+    Analyze correlation between episode count and anime scores.
+
+    Creates two visualizations:
+    - Left: Hexbin density plot showing episode count vs score
+    - Right: Violin plot showing score distribution by episode category
+
+    Parameters
+    ----------
+    max_episodes :  int, default=500
+        Maximum episode count to include (filters outliers)
+    figsize : tuple, default=(15, 6)
+        Figure size (width, height)
+
+    Returns
+    -------
+    fig, axes : matplotlib Figure and Axes array
+    correlation_stats : dict
+        Dictionary with 'pearson_r', 'interpretation', 'n_samples'
+    """
+    data = _load_data()
+
+    return _episode_correlation(
+        data["details_df"], data["stats_df"], max_episodes=max_episodes, figsize=figsize
+    )
 
 
 # ========================================
@@ -201,12 +274,16 @@ def completion_dropout_by_episode_count(figsize=(1400, 700)):
     return _completion_by_episodes(data["details_df"], data["stats_df"], figsize=figsize)
 
 
+# ========================================
+# USER BEHAVIOR ANALYSIS FUNCTIONS
+# ========================================
+
+
 def completion_dropout_distribution(min_members=100, figsize=(1400, 600)):
     """
     Analyze and visualize distribution of completion and drop rates across anime.
 
-    Creates an interactive line plot showing how many anime fall into each
-    rate percentage bracket.
+    Creates an interactive line plot showing how many anime fall into each rate percentage bracket.
 
     Parameters
     ----------
@@ -223,4 +300,3 @@ def completion_dropout_distribution(min_members=100, figsize=(1400, 600)):
     data = _load_data()
 
     return _completion_drop_dist(data["stats_df"], min_members=min_members, figsize=figsize)
-
