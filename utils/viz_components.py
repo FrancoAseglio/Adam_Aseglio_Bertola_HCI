@@ -9,6 +9,7 @@ import numpy as np
 import matplotlib.cm as cm
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
+import seaborn as sns
 
 
 def create_grouped_bar_chart(
@@ -615,3 +616,126 @@ def create_dual_horizontal_bar_chart(
     plt.tight_layout()
 
     return fig, axes
+
+def create_status_horizontal_bars(
+    data, x_col, y_col, title, x_title, y_title, figsize=(10, 6), colormap="spring"
+):
+    """
+    Create horizontal bar chart with percentage labels for viewing statuses.
+
+    Parameters
+    ----------
+    data : pd. DataFrame
+        Data with status counts and percentages
+    x_col :  str
+        Column for x-axis (count values)
+    y_col : str
+        Column for y-axis (status categories)
+    title : str
+        Chart title
+    x_title :  str
+        X-axis label
+    y_title : str
+        Y-axis label
+    figsize : tuple, default=(10, 6)
+        Figure size (width, height)
+    colormap : str, default='spring'
+        Matplotlib colormap name
+
+    Returns
+    -------
+    matplotlib.figure.Figure, matplotlib.axes.Axes
+    """
+    cmap = getattr(plt.cm, colormap)
+    colors = [cmap(i / len(data)) for i in range(len(data))]
+
+    fig, ax = plt.subplots(figsize=figsize)
+    bars = ax.barh(data[y_col], data[x_col], color=colors)
+
+    # Add labels with counts and percentages
+    max_count = data[x_col].max()
+    for i, (status, count, pct) in enumerate(
+        zip(data[y_col], data[x_col], data["percentage"])
+    ):
+        label = f"{int(count):,} ({pct:.1f}%)"
+        bar = bars[i]
+        ax.text(
+            count + max_count * 0.01,
+            bar.get_y() + bar.get_height() / 2,
+            label,
+            va="center",
+            ha="left",
+            fontsize=10,
+            color="black",
+            weight="bold",
+        )
+
+    # Styling
+    ax.set_xlim(0, max_count * 1.20)
+    ax.set_xlabel(x_title, fontsize=12)
+    ax.set_ylabel(y_title, fontsize=12)
+    ax.set_title(title, fontsize=14, weight="bold")
+
+    # Format x-axis
+    ax.xaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f"{int(x):,}"))
+    ax.grid(axis="x", alpha=0.3, linestyle="--")
+    ax.set_axisbelow(True)
+
+    # Remove spines
+    for spine in ["top", "right", "left", "bottom"]:
+        ax.spines[spine].set_visible(False)
+
+    plt.tight_layout()
+
+    return fig, ax
+
+def create_heatmap(
+    data, title, x_label, y_label, cmap="rocket", figsize=(10, 8), annot_format=".1f"
+):
+    """
+    Create annotated heatmap with seaborn.
+
+    Parameters
+    ----------
+    data : pd.DataFrame
+        Pivot table with values to plot
+    title : str
+        Chart title
+    x_label :  str
+        X-axis label
+    y_label : str
+        Y-axis label
+    cmap : str, default='rocket'
+        Seaborn colormap
+    figsize : tuple, default=(10, 8)
+        Figure size (width, height)
+    annot_format : str, default='.1f'
+        Annotation format string
+
+    Returns
+    -------
+    matplotlib.figure.Figure, matplotlib.axes.Axes
+    """
+
+    fig, ax = plt.subplots(figsize=figsize)
+
+    sns.heatmap(
+        data,
+        annot=True,
+        fmt=annot_format,
+        cmap=cmap,
+        cbar_kws={"label": "Percentage (%)"},
+        linewidths=1.5,
+        linecolor="white",
+        ax=ax,
+    )
+
+    ax.set_title(title, fontsize=14, fontweight="bold", pad=20)
+    ax.set_xlabel(x_label, fontsize=12, fontweight="bold")
+    ax.set_ylabel(y_label, fontsize=12, fontweight="bold")
+    ax.set_xticklabels(ax.get_xticklabels(), rotation=45, ha="right")
+    ax.set_yticklabels(ax.get_yticklabels(), rotation=0)
+
+    plt.tight_layout()
+
+    return fig, ax

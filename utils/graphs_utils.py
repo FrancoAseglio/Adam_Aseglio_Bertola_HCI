@@ -45,6 +45,11 @@ from .recommendation_analysis import (
     recommendation_type_patterns as _recommendation_type_patterns,
 )
 
+from .user_behavior_analysis import (
+    viewing_status_distribution as _viewing_status_distribution,
+    genre_preferences_by_persona as _genre_preferences_by_persona,
+)
+
 # ========================================
 # DATA LOADING (Module-level cache)
 # ========================================
@@ -514,3 +519,63 @@ def recommendation_type_patterns():
     )
 
     return fig
+
+# ========================================
+# USER BEHAVIOR FUNCTIONS
+# ========================================
+
+def viewing_status_distribution():
+    """
+    Visualize the overall distribution of viewing statuses across all anime.
+
+    Creates a horizontal bar chart showing total counts for each status
+    (completed, watching, plan_to_watch, dropped, on_hold).
+
+    Parameters
+    ----------
+    stats_df : pd.DataFrame
+        Anime statistics with status columns
+
+    Returns
+    -------
+    fig : matplotlib.figure.Figure
+    ax : matplotlib.axes.Axes
+    """
+    data = _load_data()
+
+    fig, ax = _viewing_status_distribution(data["stats_df"])
+
+    return fig, ax
+
+def genre_preferences_by_persona(_top_n):
+    """
+    Analyze and visualize genre preferences by fan persona.
+
+    Parameters
+    ----------
+    profiles_df : pd.DataFrame
+    favs_df : pd.DataFrame
+    details_df : pd.DataFrame
+    min_anime : int, default=10
+        Minimum number of anime for a persona to be included
+    top_n : int, default=15
+        Number of top genres to display per persona
+    figsize : tuple, default=(10, 8)
+        Figure size (width, height)     
+    Returns
+    -------
+    fig : matplotlib.figure.Figure          
+    ax : matplotlib.axes.Axes
+    """
+    data = _load_data()
+
+    fig, ax = _genre_preferences_by_persona(
+        data["profiles_df"],
+        data["favs_df"],
+        data["details_df"],
+        min_anime=10,
+        top_n=_top_n,
+        figsize=(10, 8),
+    )
+
+    return fig, ax

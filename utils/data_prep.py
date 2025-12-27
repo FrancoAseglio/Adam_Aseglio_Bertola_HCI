@@ -435,3 +435,205 @@ def prepare_country_data(profiles_df):
 
     return country_year_counts
 
+# ------------------------------
+# USER_BEHAVIOR DATA PREPARATION
+# ------------------------------
+
+def prepare_viewing_status_data(stats_df):
+    """
+    Aggregate viewing status counts across all anime.
+
+    Parameters
+    ----------
+    stats_df : pd.DataFrame
+        Anime statistics with status columns
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with status and count columns, ordered for visualization
+    """
+    status_counts = {
+        "on_hold": stats_df["on_hold"].sum(),
+        "dropped": stats_df["dropped"].sum(),
+        "watching": stats_df["watching"].sum(),
+        "plan_to_watch": stats_df["plan_to_watch"].sum(),
+        "completed": stats_df["completed"].sum(),
+    }
+
+    # Create ordered dataframe
+    status_df = pd.DataFrame(
+        [
+            {"status": "on_hold", "count": status_counts["on_hold"]},
+            {"status": "dropped", "count": status_counts["dropped"]},
+            {"status": "watching", "count": status_counts["watching"]},
+            {"status": "plan_to_watch", "count": status_counts["plan_to_watch"]},
+            {"status": "completed", "count": status_counts["completed"]},
+        ]
+    )
+
+    # Calculate percentages
+    total = status_df["count"].sum()
+    status_df["percentage"] = (status_df["count"] / total) * 100
+
+    return status_df
+
+def prepare_active_users_with_personas(profiles_df, min_anime=10):
+    """
+    Prepare active users dataset with persona assignments based on viewing behavior.
+
+    Parameters
+    ----------
+    profiles_df : pd.DataFrame
+        User profiles with viewing statistics
+    min_anime : int, default=10
+        Minimum total anime watched to be considered active
+
+    Returns
+    -------
+    pd.DataFrame
+        Active users with persona column assigned
+    """
+    profiles_analysis = profiles_df.copy()
+
+    # Clean and convert numeric columns
+    for col in ["watching", "completed", "on_hold", "dropped", "plan_to_watch"]:
+        profiles_analysis[col] = (
+            profiles_analysis[col].astype(str).str.replace(",", "").astype(float)
+        )
+
+    # Calculate metrics
+    profiles_analysis["total_anime"] = (
+        profiles_analysis["completed"]
+        + profiles_analysis["dropped"]
+        + profiles_analysis["on_hold"]
+        + profiles_analysis["watching"]
+    )
+    profiles_analysis["completion_ratio"] = profiles_analysis["completed"] / (
+        profiles_analysis["total_anime"] + 1
+    )
+    profiles_analysis["drop_ratio"] = profiles_analysis["dropped"] / (
+        profiles_analysis["total_anime"] + 1
+    )
+
+    # Filter active users
+    active_users = profiles_analysis[
+        profiles_analysis["total_anime"] >= min_anime
+    ].copy()
+
+    # Assign personas
+    def assign_persona(row):
+        if row["completion_ratio"] > 0.90 and row["total_anime"] > 300:
+            return "Completionist"
+        elif row["drop_ratio"] > 0.10:
+            return "Selective Critic"
+        elif row["total_anime"] < 100:
+            return "Casual Viewer"
+        elif row["total_anime"] > 500:
+            return "Hardcore Fan"
+        else:
+            return "Balanced Enthusiast"
+
+    active_users["persona"] = active_users.apply(assign_persona, axis=1)
+
+    return active_users
+
+def prepare_persona_genre_data(active_users, favs_df, details_df, top_n=15):
+    """
+    Prepare genre preference data by fan persona (OPTIMIZED VERSION).
+
+    Parameters
+    ----------
+    active_users : pd. DataFrame
+        Users with persona assignments
+    favs_df : pd.DataFrame
+        User favorites dataset
+    details_df :   pd.DataFrame
+        Anime details with genres
+    top_n : int, default=15
+        Number of top genres to include
+
+    Returns
+    -------
+    pd. DataFrame
+        Pivot table with genres as rows, personas as columns, percentages as values
+    """
+    # Merge active_users with favs (filter anime favorites only)
+    user_favs = active_users[["username", "persona"]].merge(
+        favs_df[favs_df["fav_type"] == "anime"], on="username", how="inner"
+    )
+
+    # Merge with details to get genres
+    user_favs_genres = user_favs.merge(
+        details_df[["mal_id", "genres"]], left_on="id", right_on="mal_id", how="left"
+    )
+
+    # Parse genres (vectorized)
+    user_favs_genres["genres_list"] = user_favs_genres["genres"].apply(parse_list)
+
+    # ========================================
+    # OPTIMIZED: Use explode instead of iterrows
+    # ========================================
+    persona_genre_df = user_favs_genres[["persona", "genres_list"]].explode(
+        "genres_list"
+    )
+    persona_genre_df = persona_genre_df[
+        persona_genre_df["genres_list"].notna()
+        & (persona_genre_df["genres_list"] != "")
+    ]
+    persona_genre_df = persona_genre_df.rename(columns={"genres_list": "genre"})
+
+    # Count occurrences (much faster than looping)
+    persona_genre_counts = (
+        persona_genre_df.groupby(["persona", "genre"], observed=True)
+        .size()
+        .reset_index(name="count")
+    )
+
+    # Calculate percentages
+    persona_totals = (
+        persona_genre_counts.groupby("persona", observed=True)["count"]
+        .sum()
+        .reset_index(name="total")
+    )
+    persona_genre_counts = persona_genre_counts.merge(persona_totals, on="persona")
+    persona_genre_counts["percentage"] = (
+        persona_genre_counts["count"] / persona_genre_counts["total"]
+    ) * 100
+
+    # Filter to top N genres by total count
+    top_genres = (
+        persona_genre_counts.groupby("genre", observed=True)["count"]
+        .sum()
+        .nlargest(top_n)
+        .index.tolist()
+    )
+    persona_genre_filtered = persona_genre_counts[
+        persona_genre_counts["genre"].isin(top_genres)
+    ].copy()
+
+    # Pivot to heatmap format
+    heatmap_data = persona_genre_filtered.pivot(
+        index="genre", columns="persona", values="percentage"
+    ).fillna(0)
+
+    # Order columns by persona progression
+    column_order = [
+        "Completionist",
+        "Hardcore Fan",
+        "Balanced Enthusiast",
+        "Casual Viewer",
+        "Selective Critic",
+    ]
+    heatmap_data = heatmap_data[
+        [col for col in column_order if col in heatmap_data.columns]
+    ]
+
+    # Sort rows by total popularity
+    heatmap_data["total"] = heatmap_data.sum(axis=1)
+    heatmap_data = heatmap_data.sort_values("total", ascending=False).drop(
+        "total", axis=1
+    )
+
+    return heatmap_data
+
