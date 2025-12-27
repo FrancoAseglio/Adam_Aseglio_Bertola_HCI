@@ -349,9 +349,6 @@ def create_hexbin_violin_plot(
     correlation_stats : dict
         Dictionary with 'pearson_r', 'interpretation', 'n_samples'
     """
-    import seaborn as sns
-    from scipy.stats import pearsonr
-
     fig, axes = plt.subplots(1, 2, figsize=figsize)
 
     # Calculate correlation
@@ -617,6 +614,7 @@ def create_dual_horizontal_bar_chart(
 
     return fig, axes
 
+
 def create_status_horizontal_bars(
     data, x_col, y_col, title, x_title, y_title, figsize=(10, 6), colormap="spring"
 ):
@@ -689,6 +687,7 @@ def create_status_horizontal_bars(
 
     return fig, ax
 
+
 def create_heatmap(
     data, title, x_label, y_label, cmap="rocket", figsize=(10, 8), annot_format=".1f"
 ):
@@ -739,3 +738,4 @@ def create_heatmap(
     plt.tight_layout()
 
     return fig, ax
+

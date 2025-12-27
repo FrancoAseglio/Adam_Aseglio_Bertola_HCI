@@ -5,9 +5,6 @@ Episode Analysis Functions
 Analysis of anime distribution and scores by episode count.
 """
 
-import pandas as pd
-import matplotlib.pyplot as plt
-
 from .data_prep import prepare_episode_score_data, aggregate_by_dimension
 from .viz_components import create_dual_bar_chart, create_hexbin_violin_plot
 

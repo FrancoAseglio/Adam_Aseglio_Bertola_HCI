@@ -144,3 +144,4 @@ def language_vs_geographic_distribution(profiles_df, figsize=(10, 6)):
     plt.tight_layout()
 
     return fig, ax
+

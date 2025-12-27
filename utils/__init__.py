@@ -2,6 +2,17 @@
 Anime Analysis Utilities Package
 =================================
 """
+from .graphs_utils import (
+    clear_cache,
+)
+
+from .data_prep import (
+    prepare_engagement_data,
+    prepare_character_favorites,
+    explode_genres,
+    bin_episodes,
+    prepare_completion_drop_data,
+)
 
 from .studio_analysis import (
     studio_performance_analysis,
@@ -30,18 +41,6 @@ from .engagement_analysis import (
     completion_dropout_distribution,
 )
 
-from .data_prep import (
-    prepare_engagement_data,
-    prepare_character_favorites,
-    explode_genres,
-    bin_episodes,
-    prepare_completion_drop_data,
-)
-
-from .viz_components import (
-    create_dual_line_distribution,
-)
-
 from .geo_analysis import (
     create_animated_map,
     language_vs_geographic_distribution,
@@ -52,7 +51,15 @@ from .recommendation_analysis import (
     recommendation_type_patterns,
 )
 
+from .viz_components import (
+    create_dual_line_distribution,
+)
+
+
 __all__ = [
+    # Utils
+    "clear_cache",
+
     # Studio Analysis
     "studio_performance_analysis",
 

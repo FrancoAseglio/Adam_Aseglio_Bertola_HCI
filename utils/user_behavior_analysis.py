@@ -5,14 +5,13 @@ User Behavior Analysis Functions
 Analysis of user viewing patterns, completion/dropout behavior, and persona-based preferences.
 """
 
-import numpy as np
-import plotly.graph_objects as go
 
 from .data_prep import (
     prepare_viewing_status_data,
     prepare_active_users_with_personas,
     prepare_persona_genre_data,
 )
+
 from .viz_components import (
     create_status_horizontal_bars,
     create_heatmap,

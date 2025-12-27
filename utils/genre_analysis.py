@@ -8,26 +8,22 @@ Most watched and most liked genres analysis.
 import pandas as pd
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
-import plotly. express as px
+import plotly.express as px
 
 from .data_prep import explode_genres, fill_missing_years
 from .viz_components import create_horizontal_bar_chart
 
 
 def genre_comparison_watched_vs_liked(
-    details_df,
-    favs_df,
-    stats_df,
-    top_n=10,
-    figsize=(24, 10)
+    details_df, favs_df, stats_df, top_n=10, figsize=(24, 10)
 ):
     """
     Compare most liked vs most watched genres side-by-side.
-    
-    Creates two horizontal bar charts: 
+
+    Creates two horizontal bar charts:
     - Left: Top N most liked (favorited) genres
     - Right:  Top N most watched (engaged) genres
-    
+
     Parameters
     ----------
     details_df :  pd.DataFrame
@@ -40,7 +36,7 @@ def genre_comparison_watched_vs_liked(
         Number of top genres to display
     figsize :  tuple, default=(24, 10)
         Figure size (width, height)
-    
+
     Returns
     -------
     fig :  matplotlib. figure.Figure
@@ -48,75 +44,68 @@ def genre_comparison_watched_vs_liked(
     """
     # Create figure with 2 subplots
     fig, axes = plt.subplots(1, 2, figsize=figsize)
-    
+
     # ========================================
     # LEFT:  Most Watched Genres
     # ========================================
     merged_watched = details_df.merge(
-        stats_df[['mal_id', 'watching', 'completed', 'on_hold', 'dropped']], 
-        on='mal_id', 
-        how='inner'
-    )
-    
-    merged_watched['started_users'] = (
-        merged_watched['watching'] + 
-        merged_watched['completed'] + 
-        merged_watched['on_hold'] + 
-        merged_watched['dropped']
-    )
-    
-    merged_watched = merged_watched[merged_watched['genres'].notna()].copy()
-    merged_watched = explode_genres(merged_watched)
-    
-    genre_stats = (
-        merged_watched.groupby('genres_list')['started_users']
-        .sum()
-        .reset_index()
-    )
-    genre_stats.columns = ['Genre', 'Total Engaged Users']
-    top_genres_watched = genre_stats.nlargest(top_n, 'Total Engaged Users')
-    
-    create_horizontal_bar_chart(
-        data=top_genres_watched,
-        y_col='Genre',
-        x_col='Total Engaged Users',
-        title=f'Top {top_n} Most Watched Genres',
-        x_title='Total Engaged Users',
-        y_title='',
-        colormap='viridis_r',
-        ax=axes[0]
+        stats_df[["mal_id", "watching", "completed", "on_hold", "dropped"]],
+        on="mal_id",
+        how="inner",
     )
 
-    # ========================================
-    # RIGHT: Most Liked Genres
-    # ========================================
-    anime_favs = favs_df[favs_df['fav_type'] == 'anime']. copy()
-    merged_liked = anime_favs.merge(
-        details_df, 
-        left_on='id', 
-        right_on='mal_id', 
-        how='inner'
+    merged_watched["started_users"] = (
+        merged_watched["watching"]
+        + merged_watched["completed"]
+        + merged_watched["on_hold"]
+        + merged_watched["dropped"]
     )
-    merged_liked = merged_liked[merged_liked['genres'].notna()].copy()
+
+    merged_watched = merged_watched[merged_watched["genres"].notna()].copy()
+    merged_watched = explode_genres(merged_watched)
+
+    genre_stats = (
+        merged_watched.groupby("genres_list")["started_users"].sum().reset_index()
+    )
+    genre_stats.columns = ["Genre", "Total Engaged Users"]
+    top_genres_watched = genre_stats.nlargest(top_n, "Total Engaged Users")
+
+    create_horizontal_bar_chart(
+        data=top_genres_watched,
+        y_col="Genre",
+        x_col="Total Engaged Users",
+        title=f"Top {top_n} Most Watched Genres",
+        x_title="Total Engaged Users",
+        y_title="",
+        colormap="viridis_r",
+        ax=axes[0],
+    )
+
+    # RIGHT: Most Liked Genres
+    anime_favs = favs_df[favs_df["fav_type"] == "anime"].copy()
+    merged_liked = anime_favs.merge(
+        details_df, left_on="id", right_on="mal_id", how="inner"
+    )
+    merged_liked = merged_liked[merged_liked["genres"].notna()].copy()
     merged_liked = explode_genres(merged_liked)
-    
-    genre_counts = merged_liked['genres_list']. value_counts().reset_index()
-    genre_counts.columns = ['Genre', 'Favorite Count']
+
+    genre_counts = merged_liked["genres_list"].value_counts().reset_index()
+    genre_counts.columns = ["Genre", "Favorite Count"]
     top_genres_liked = genre_counts.head(top_n)
-    
+
     create_horizontal_bar_chart(
         data=top_genres_liked,
-        y_col='Genre',
-        x_col='Favorite Count',
-        title=f'Top {top_n} Most Liked Genres',
-        x_title='Favorite Count',
-        y_title='',
-        colormap='plasma_r',
-        ax=axes[1]
+        y_col="Genre",
+        x_col="Favorite Count",
+        title=f"Top {top_n} Most Liked Genres",
+        x_title="Favorite Count",
+        y_title="",
+        colormap="plasma_r",
+        ax=axes[1],
     )
-    
+
     plt.tight_layout()
-    
+
     return fig, axes
 
 
@@ -130,7 +119,7 @@ def genre_evolution_over_time(
 ):
     """
     Interactive line chart showing how genre popularity evolves over time.
-    Click legend items to toggle genres on/off. 
+    Click legend items to toggle genres on/off.
 
     Parameters
     ----------
@@ -153,16 +142,15 @@ def genre_evolution_over_time(
     """
 
     # Prepare data
-    data = details_df.merge(stats_df[["mal_id", "watching", "completed", "on_hold", "dropped"]], 
-                            on="mal_id", 
-                            how="inner")
+    data = details_df.merge(
+        stats_df[["mal_id", "watching", "completed", "on_hold", "dropped"]],
+        on="mal_id",
+        how="inner",
+    )
 
     # Calculate total engagement (started users)
     data["started_users"] = (
-        data["watching"] + 
-        data["completed"] + 
-        data["on_hold"] + 
-        data["dropped"]
+        data["watching"] + data["completed"] + data["on_hold"] + data["dropped"]
     )
 
     # Extract year
@@ -174,19 +162,19 @@ def genre_evolution_over_time(
         ).dt.year
 
     # Filter and clean
-    data = data[data["year"]. notna() & data["genres"]. notna()].copy()
-    
+    data = data[data["year"].notna() & data["genres"].notna()].copy()
+
     if year_range:
         data = data[(data["year"] >= year_range[0]) & (data["year"] <= year_range[1])]
 
     # Explode genres and aggregate popularity
     data_exploded = explode_genres(data)
-    
+
     genre_year_stats = (
-        data_exploded. groupby(["genres_list", "year"])
+        data_exploded.groupby(["genres_list", "year"])
         .agg({"started_users": "sum", "mal_id": "count"})
         .reset_index()
-        .rename(columns={"started_users":  "popularity", "mal_id":  "anime_count"})
+        .rename(columns={"started_users": "popularity", "mal_id": "anime_count"})
     )
 
     # Fill missing years to avoid line gaps
@@ -194,14 +182,13 @@ def genre_evolution_over_time(
 
     # Apply smoothing if requested
     if smooth:
-        genre_year_stats["popularity"] = (
-            genre_year_stats. groupby("genres_list")["popularity"]
-            .transform(lambda x: x.rolling(window=3, center=True, min_periods=1).mean())
-        )
+        genre_year_stats["popularity"] = genre_year_stats.groupby("genres_list")[
+            "popularity"
+        ].transform(lambda x: x.rolling(window=3, center=True, min_periods=1).mean())
 
     # Select top N genres by total popularity
     top_genres = (
-        genre_year_stats. groupby("genres_list")["popularity"]
+        genre_year_stats.groupby("genres_list")["popularity"]
         .sum()
         .nlargest(top_n)
         .index.tolist()
@@ -243,7 +230,7 @@ def genre_evolution_over_time(
     # Layout
     fig.update_layout(
         title=f"Genre Popularity Evolution Over Time<br>"
-              f"<sub>Top {top_n} genres by total engaged users",
+        f"<sub>Top {top_n} genres by total engaged users",
         xaxis_title="Year",
         yaxis_title="Total Engaged Users",
         width=figsize[0],

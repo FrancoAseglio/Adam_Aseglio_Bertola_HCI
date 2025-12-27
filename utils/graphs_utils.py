@@ -35,8 +35,8 @@ from .engagement_analysis import (
     completion_dropout_distribution as _completion_drop_dist,
 )
 
-from.geo_analysis import (
-    create_animated_map as _create_animated_map,    
+from .geo_analysis import (
+    create_animated_map as _create_animated_map,
     language_vs_geographic_distribution as _language_vs_geographic_distribution,
 )
 
@@ -85,9 +85,8 @@ def _load_data():
 
 
 # ========================================
-# DATA CLEANING: Clear data cache
+# UTILITY: Clear data cache
 # ========================================
-
 
 def clear_cache():
     """Clear the data cache to free memory or force reload."""
@@ -105,11 +104,11 @@ def clear_cache():
 def studio_performance_analysis(min_anime_threshold=5, top_n=10, figsize=(16, 8)):
     """
     Analyze anime studios by productivity and quality.
-    
+
     Shows:
     - Left: Top studios by number of anime produced (prolific)
     - Right: Top studios by average score (quality)
-    
+
     Parameters
     ----------
     min_anime_threshold :  int, default=5
@@ -118,14 +117,14 @@ def studio_performance_analysis(min_anime_threshold=5, top_n=10, figsize=(16, 8)
         Number of top studios to display in each chart
     figsize : tuple, default=(16, 8)
         Figure size (width, height)
-    
+
     Returns
     -------
     fig, axes : matplotlib figure and axes objects
     studio_analysis : DataFrame with studio metrics
     """
     data = _load_data()
-    
+
     return _studio_performance(
         data["details_df"],
         data["stats_df"],
@@ -225,7 +224,9 @@ def genre_comparison_watched_vs_liked(top_n=10, figsize=(24, 10)):
     )
 
 
-def genre_evolution_over_time(top_n=10, year_range=None, smooth=False, figsize=(1400, 700)):
+def genre_evolution_over_time(
+    top_n=10, year_range=None, smooth=False, figsize=(1400, 700)
+):
     """
     Interactive line chart showing how genre popularity evolves over time.
     Click on legend items to toggle genres on/off.
@@ -286,7 +287,9 @@ def character_popularity_by_role(figsize=(14, 5)):
     )
 
 
-def character_popularity_by_genre_bars(min_char_count=10, top_n=10, figsize=(1200, 700)):
+def character_popularity_by_genre_bars(
+    min_char_count=10, top_n=10, figsize=(1200, 700)
+):
     """
     Interactive horizontal bar chart showing top genres by character popularity.
 
@@ -383,7 +386,9 @@ def completion_dropout_by_genre(top_n_genres=10, figsize=(1400, 700)):
     """
     data = _load_data()
 
-    return _completion_by_genre(data["details_df"], data["stats_df"], top_n=top_n_genres, figsize=figsize)
+    return _completion_by_genre(
+        data["details_df"], data["stats_df"], top_n=top_n_genres, figsize=figsize
+    )
 
 
 def completion_dropout_by_episode_count(figsize=(1400, 700)):
@@ -401,7 +406,9 @@ def completion_dropout_by_episode_count(figsize=(1400, 700)):
     """
     data = _load_data()
 
-    return _completion_by_episodes(data["details_df"], data["stats_df"], figsize=figsize)
+    return _completion_by_episodes(
+        data["details_df"], data["stats_df"], figsize=figsize
+    )
 
 
 def completion_dropout_distribution(min_members=100, figsize=(1400, 600)):
@@ -424,11 +431,15 @@ def completion_dropout_distribution(min_members=100, figsize=(1400, 600)):
     """
     data = _load_data()
 
-    return _completion_drop_dist(data["stats_df"], min_members=min_members, figsize=figsize)
+    return _completion_drop_dist(
+        data["stats_df"], min_members=min_members, figsize=figsize
+    )
+
 
 # ========================================
 # GEOGRAPHIC ANALYSIS FUNCTIONS
 # ========================================
+
 
 def create_animated_map():
     """
@@ -468,9 +479,11 @@ def language_vs_geographic_distribution():
     data = _load_data()
     return _language_vs_geographic_distribution(data["profiles_df"], figsize=(10, 6))
 
+
 # ========================================
 # RECOMMENDATION FUNCTIONS
 # ========================================
+
 
 def recommendation_genre_cooccurrence():
     """
@@ -496,6 +509,7 @@ def recommendation_genre_cooccurrence():
 
     return fig
 
+
 def recommendation_type_patterns():
     """
     Analyze recommendation patterns based on anime types.
@@ -520,9 +534,11 @@ def recommendation_type_patterns():
 
     return fig
 
+
 # ========================================
 # USER BEHAVIOR FUNCTIONS
 # ========================================
+
 
 def viewing_status_distribution():
     """
@@ -547,6 +563,7 @@ def viewing_status_distribution():
 
     return fig, ax
 
+
 def genre_preferences_by_persona(_top_n):
     """
     Analyze and visualize genre preferences by fan persona.
@@ -561,10 +578,10 @@ def genre_preferences_by_persona(_top_n):
     top_n : int, default=15
         Number of top genres to display per persona
     figsize : tuple, default=(10, 8)
-        Figure size (width, height)     
+        Figure size (width, height)
     Returns
     -------
-    fig : matplotlib.figure.Figure          
+    fig : matplotlib.figure.Figure
     ax : matplotlib.axes.Axes
     """
     data = _load_data()
@@ -579,3 +596,4 @@ def genre_preferences_by_persona(_top_n):
     )
 
     return fig, ax
+

@@ -7,6 +7,7 @@ Reusable functions for preparing and processing anime-related datasets.
 
 import pandas as pd
 import numpy as np
+
 from utils.geo_utils import get_country_code
 from .dev_utils import parse_list
 
@@ -62,8 +63,6 @@ def prepare_studio_data(details_df, stats_df, min_anime_threshold=5):
         Studio analysis data with columns:  Studio, Avg Score, Count
         Sorted by Count descending
     """
-    from .dev_utils import parse_list
-
     # Merge datasets
     df = details_df.merge(stats_df, on="mal_id", how="inner")
 
@@ -391,9 +390,11 @@ def prepare_completion_drop_data(stats_df, min_members=100):
 
     return stats_filtered
 
+
 # ------------------------------
 # GEOGRAPHIC DATA PREPARATION
 # ------------------------------
+
 
 def prepare_country_data(profiles_df):
     """
@@ -435,9 +436,11 @@ def prepare_country_data(profiles_df):
 
     return country_year_counts
 
+
 # ------------------------------
 # USER_BEHAVIOR DATA PREPARATION
 # ------------------------------
+
 
 def prepare_viewing_status_data(stats_df):
     """
@@ -477,6 +480,7 @@ def prepare_viewing_status_data(stats_df):
     status_df["percentage"] = (status_df["count"] / total) * 100
 
     return status_df
+
 
 def prepare_active_users_with_personas(profiles_df, min_anime=10):
     """
@@ -537,6 +541,7 @@ def prepare_active_users_with_personas(profiles_df, min_anime=10):
     active_users["persona"] = active_users.apply(assign_persona, axis=1)
 
     return active_users
+
 
 def prepare_persona_genre_data(active_users, favs_df, details_df, top_n=15):
     """
@@ -636,4 +641,3 @@ def prepare_persona_genre_data(active_users, favs_df, details_df, top_n=15):
     )
 
     return heatmap_data
-
