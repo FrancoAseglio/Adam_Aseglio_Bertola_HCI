@@ -1,10 +1,150 @@
 import pandas as pd
+import numpy as np
+import os
 import re
 import warnings
 
 warnings.filterwarnings("ignore", category=UserWarning)
 from typing import List
 
+def save_to_csv(dataframe, save_path=None):
+    """Save the comparison dataframe to CSV into given dir"""
+    prefix = "anime_score_comparison"
+    filename = f"{prefix}.csv"
+
+    if save_path:
+        save_path = os.path.expanduser(save_path)
+        os.makedirs(save_path, exist_ok=True)
+        filepath = os.path.join(save_path, filename)
+    else:
+        filepath = filename
+    
+    dataframe.to_csv(filepath, index=False, encoding="utf-8")
+    print(f"CSV saved to: {filepath}\n")
+    return filepath
+
+
+def print_section_header(title, width=80):
+    """Print a formatted section header"""
+    print("=" * width)
+    print(title)
+    print("=" * width)
+    print()
+
+
+def print_metadata(comparison, valid_stats, valid_ratings):
+    """Print metadata section"""
+    print_section_header("METADATA")
+    print(f"Total anime analyzed:        {len(comparison):,}")
+    print(f"Anime with stats:            {len(valid_stats):,}")
+    print(f"Anime with ratings:          {len(valid_ratings):,}")
+    print(f"Coverage stats (%):          {len(valid_stats)/len(comparison)*100:.2f}%")
+    print(f"Coverage ratings (%):        {len(valid_ratings)/len(comparison)*100:.2f}%")
+    print()
+
+
+def print_key_results(mean_distance_stats, mean_distance_ratings):
+    """Print key results section"""
+    print_section_header("KEY RESULTS")
+    print(f"Mean distance (stats_df):    {mean_distance_stats:.6f}")
+    print(f"Mean distance (ratings_df):  {mean_distance_ratings:.6f}")
+    print(f"Absolute difference:         {abs(mean_distance_stats - mean_distance_ratings):.6f}")
+
+    winner = "stats_df" if mean_distance_stats < mean_distance_ratings else "ratings_df"
+    improvement = abs(mean_distance_stats - mean_distance_ratings) / max(mean_distance_stats, mean_distance_ratings) * 100
+
+    print(f"Winner:                      {winner}")
+    print(f"Improvement:                 {improvement:.2f}%")
+    print()
+
+
+def print_statistics_for_dataset(name, data, distance_col, mean_distance):
+    """Print statistical summary for a single dataset"""
+    print(f"{name}:")
+    print(f"  Count:     {len(data):,}")
+    print(f"  Min:       {data[distance_col].min():.6f}")
+    print(f"  Q1:        {data[distance_col].quantile(0.25):.6f}")
+    print(f"  Median:    {data[distance_col].median():.6f}")
+    print(f"  Mean:      {mean_distance:.6f}")
+    print(f"  Q3:        {data[distance_col].quantile(0.75):.6f}")
+    print(f"  Max:       {data[distance_col]. max():.6f}")
+    print(f"  Std Dev:   {data[distance_col].std():.6f}")
+    print()
+
+
+def print_statistical_summary(valid_stats, valid_ratings, mean_distance_stats, mean_distance_ratings):
+    """Print statistical summary section"""
+    print_section_header("STATISTICAL SUMMARY")
+    print_statistics_for_dataset("STATS_DF", valid_stats, "distance_stats", mean_distance_stats)
+    print_statistics_for_dataset("RATINGS_DF", valid_ratings, "distance_ratings", mean_distance_ratings)
+
+
+def print_distribution_for_dataset(name, data, distance_col, labels, bins):
+    """Print distribution for a single dataset"""
+    print(f"{name}:")
+    dist = pd.cut(data[distance_col], bins=bins, labels=labels).value_counts().sort_index()
+
+    for label in labels:
+        count = dist.get(label, 0)
+        pct = (count / len(data) * 100) if len(data) > 0 else 0
+        bar = "█" * int(pct / 2)
+        print(f"  {label: >10}: {count:>6,} ({pct:>5.1f}%) {bar}")
+    print()
+
+
+def print_distance_distribution(valid_stats, valid_ratings):
+    """Print distance distribution section"""
+    bins = [0, 0.01, 0.05, 0.1, 0.5, 1.0, float("inf")]
+    labels = ["0-0.01", "0.01-0.05", "0.05-0.1", "0.1-0.5", "0.5-1.0", ">1.0"]
+
+    print_section_header("DISTANCE DISTRIBUTION")
+    print_distribution_for_dataset("STATS_DF", valid_stats, "distance_stats", labels, bins)
+    print_distribution_for_dataset("RATINGS_DF", valid_ratings, "distance_ratings", labels, bins)
+
+
+def print_prediction_table(data, distance_col, score_computed_col, n=20):
+    """Print a formatted table of predictions"""
+    print(f"{'MAL_ID': >10} {'Actual':>8} {'Computed':>8} {'Distance':>10}")
+    print("-" * 40)
+    for _, row in data.iterrows():
+        print(f"{int(row['mal_id']):>10} {row['score']:>8.4f} {row[score_computed_col]:>8.4f} {row[distance_col]:>10.4f}")
+    print()
+
+
+def print_worst_predictions(valid_stats, valid_ratings, n=20):
+    """Print top N worst predictions"""
+    print_section_header(f"TOP {n} WORST PREDICTIONS (Highest Distance)")
+
+    print("STATS_DF:")
+    worst_stats = valid_stats.nlargest(n, "distance_stats")
+    print_prediction_table(worst_stats, "distance_stats", "computed_score_from_stats", n)
+
+    print("RATINGS_DF:")
+    worst_ratings = valid_ratings. nlargest(n, "distance_ratings")
+    print_prediction_table(worst_ratings, "distance_ratings", "computed_score_from_ratings", n)
+
+
+def print_best_predictions(valid_stats, valid_ratings, n=20):
+    """Print top N best predictions"""
+    print_section_header(f"TOP {n} BEST PREDICTIONS (Lowest Distance)")
+
+    print("STATS_DF:")
+    best_stats = valid_stats.nsmallest(n, "distance_stats")
+    print_prediction_table(best_stats, "distance_stats", "computed_score_from_stats", n)
+
+    print("RATINGS_DF:")
+    best_ratings = valid_ratings.nsmallest(n, "distance_ratings")
+    print_prediction_table(best_ratings, "distance_ratings", "computed_score_from_ratings", n)
+
+
+def print_detailed_report(comparison, valid_stats, valid_ratings, mean_distance_stats, mean_distance_ratings):
+    """Print comprehensive analysis report to console"""
+    print_metadata(comparison, valid_stats, valid_ratings)
+    print_key_results(mean_distance_stats, mean_distance_ratings)
+    print_statistical_summary(valid_stats, valid_ratings, mean_distance_stats, mean_distance_ratings)
+    print_distance_distribution(valid_stats, valid_ratings)
+    print_worst_predictions(valid_stats, valid_ratings, n=20)
+    print_best_predictions(valid_stats, valid_ratings, n=20)
 
 def quick_profile(df: pd.DataFrame, name: str) -> None:
     """
