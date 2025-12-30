@@ -18,7 +18,7 @@ def save_to_csv(dataframe, save_path=None):
         filepath = os.path.join(save_path, filename)
     else:
         filepath = filename
-    
+
     dataframe.to_csv(filepath, index=False, encoding="utf-8")
     print(f"CSV saved to: {filepath}\n")
     return filepath
@@ -72,13 +72,6 @@ def print_statistics_for_dataset(name, data, distance_col, mean_distance):
     print()
 
 
-def print_statistical_summary(valid_stats, valid_ratings, mean_distance_stats, mean_distance_ratings):
-    """Print statistical summary section"""
-    print_section_header("STATISTICAL SUMMARY")
-    print_statistics_for_dataset("STATS_DF", valid_stats, "distance_stats", mean_distance_stats)
-    print_statistics_for_dataset("RATINGS_DF", valid_ratings, "distance_ratings", mean_distance_ratings)
-
-
 def print_distribution_for_dataset(name, data, distance_col, labels, bins):
     """Print distribution for a single dataset"""
     print(f"{name}:")
@@ -111,40 +104,12 @@ def print_prediction_table(data, distance_col, score_computed_col, n=20):
     print()
 
 
-def print_worst_predictions(valid_stats, valid_ratings, n=20):
-    """Print top N worst predictions"""
-    print_section_header(f"TOP {n} WORST PREDICTIONS (Highest Distance)")
-
-    print("STATS_DF:")
-    worst_stats = valid_stats.nlargest(n, "distance_stats")
-    print_prediction_table(worst_stats, "distance_stats", "computed_score_from_stats", n)
-
-    print("RATINGS_DF:")
-    worst_ratings = valid_ratings. nlargest(n, "distance_ratings")
-    print_prediction_table(worst_ratings, "distance_ratings", "computed_score_from_ratings", n)
-
-
-def print_best_predictions(valid_stats, valid_ratings, n=20):
-    """Print top N best predictions"""
-    print_section_header(f"TOP {n} BEST PREDICTIONS (Lowest Distance)")
-
-    print("STATS_DF:")
-    best_stats = valid_stats.nsmallest(n, "distance_stats")
-    print_prediction_table(best_stats, "distance_stats", "computed_score_from_stats", n)
-
-    print("RATINGS_DF:")
-    best_ratings = valid_ratings.nsmallest(n, "distance_ratings")
-    print_prediction_table(best_ratings, "distance_ratings", "computed_score_from_ratings", n)
-
-
 def print_detailed_report(comparison, valid_stats, valid_ratings, mean_distance_stats, mean_distance_ratings):
     """Print comprehensive analysis report to console"""
     print_metadata(comparison, valid_stats, valid_ratings)
     print_key_results(mean_distance_stats, mean_distance_ratings)
-    print_statistical_summary(valid_stats, valid_ratings, mean_distance_stats, mean_distance_ratings)
     print_distance_distribution(valid_stats, valid_ratings)
-    print_worst_predictions(valid_stats, valid_ratings, n=20)
-    print_best_predictions(valid_stats, valid_ratings, n=20)
+
 
 def quick_profile(df: pd.DataFrame, name: str) -> None:
     """
