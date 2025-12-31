@@ -6,6 +6,9 @@ Analysis of user viewing patterns, completion/dropout behavior, and persona-base
 """
 
 
+import matplotlib.pyplot as plt
+import numpy as np
+
 from .data_prep import (
     prepare_viewing_status_data,
     prepare_active_users_with_personas,
@@ -13,43 +16,58 @@ from .data_prep import (
 )
 
 from .viz_components import (
-    create_status_horizontal_bars,
     create_heatmap,
 )
 
 
-def viewing_status_distribution(stats_df, figsize=(10, 6)):
+def viewing_status_distribution(stats_df, figsize=(20, 12)):
     """
-    Visualize the overall distribution of viewing statuses across all anime.
-
-    Creates a horizontal bar chart showing total counts for each status
-    (completed, watching, plan_to_watch, dropped, on_hold).
-
-    Parameters
-    ----------
-    stats_df : pd.DataFrame
-        Anime statistics with status columns
-    figsize : tuple, default=(10, 6)
-        Figure size (width, height)
-
-    Returns
-    -------
-    fig : matplotlib.figure.Figure
-    ax : matplotlib.axes.Axes
+    Visualize the overall distribution of viewing statuses using the helper function.
     """
-    # Prepare data
+    # Prepare Data using your helper function
     status_df = prepare_viewing_status_data(stats_df)
+    
+    # Sort by count descending to make the chart look organized (Big slices first)
+    status_df = status_df.sort_values(by='count', ascending=False)
+    
+    counts = status_df['count']
+    labels = [s.replace('_', ' ').title() for s in status_df['status']]
 
-    # Create visualization
-    fig, ax = create_status_horizontal_bars(
-        data=status_df,
-        x_col="count",
-        y_col="status",
-        title="Viewing Status Distribution",
-        x_title="Number of Ratings",
-        y_title="Status",
-        figsize=figsize,
-        colormap="spring",
+    # Create Visualization
+    fig, ax = plt.subplots(figsize=figsize)
+    
+    # Use 'tab10' colormap for high contrast
+    colors = plt.get_cmap('tab10').colors
+
+    # Draw Donut Chart
+    wedges, texts, autotexts = ax.pie(
+        counts,
+        labels=None,
+        autopct='%1.1f%%',
+        startangle=90,
+        pctdistance=0.82,
+        colors=colors,
+        wedgeprops=dict(width=0.4, edgecolor='white'),
+        textprops={'fontsize': 14, 'weight': 'bold', 'color': 'white'}
+    )
+
+    total = counts.sum()
+
+    # Titles and Center Text
+    ax.set_title("Viewing Status Distribution", fontsize=24, fontweight='bold')
+    
+    ax.text(0, 0, f"Total\n{total:,.0f}", 
+            ha='center', va='center', fontsize=18, fontweight='bold', color='#333')
+
+    # Side Legend
+    ax.legend(
+        wedges, labels,
+        title="Status",
+        title_fontsize=16,
+        fontsize=14,
+        loc="center left",
+        bbox_to_anchor=(1, 0, 0.5, 1),
+        frameon=False
     )
 
     return fig, ax
