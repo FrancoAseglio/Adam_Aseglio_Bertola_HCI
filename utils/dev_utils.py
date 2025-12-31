@@ -58,20 +58,6 @@ def print_key_results(mean_distance_stats, mean_distance_ratings):
     print()
 
 
-def print_statistics_for_dataset(name, data, distance_col, mean_distance):
-    """Print statistical summary for a single dataset"""
-    print(f"{name}:")
-    print(f"  Count:     {len(data):,}")
-    print(f"  Min:       {data[distance_col].min():.6f}")
-    print(f"  Q1:        {data[distance_col].quantile(0.25):.6f}")
-    print(f"  Median:    {data[distance_col].median():.6f}")
-    print(f"  Mean:      {mean_distance:.6f}")
-    print(f"  Q3:        {data[distance_col].quantile(0.75):.6f}")
-    print(f"  Max:       {data[distance_col]. max():.6f}")
-    print(f"  Std Dev:   {data[distance_col].std():.6f}")
-    print()
-
-
 def print_distribution_for_dataset(name, data, distance_col, labels, bins):
     """Print distribution for a single dataset"""
     print(f"{name}:")

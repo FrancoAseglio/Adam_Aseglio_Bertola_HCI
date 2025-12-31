@@ -68,6 +68,16 @@ def _load_data():
 
     FILE_EXTENSION = ".csv"
 
+    # dtypes optimized for ratings dataset to save memory and make it loadable for everyone
+    rating_dtypes = {
+        'username': 'object',
+        'anime_id': 'int32',
+        'status': 'category',
+        'score': 'int8',
+        'is_rewatching': 'float32',
+        'num_watched_episodes': 'int32'
+    }
+
     _DATA_CACHE["character_anime_works_df"] = pd.read_csv(INPUT_DIR_PATH / f"character_anime_works_clean{FILE_EXTENSION}")
     _DATA_CACHE["character_nicknames_df"] = pd.read_csv(INPUT_DIR_PATH / f"character_nicknames_clean{FILE_EXTENSION}")
     _DATA_CACHE["characters_df"] = pd.read_csv(INPUT_DIR_PATH / f"characters_clean{FILE_EXTENSION}")
