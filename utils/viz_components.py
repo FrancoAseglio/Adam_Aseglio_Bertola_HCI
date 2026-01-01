@@ -615,75 +615,92 @@ def create_dual_horizontal_bar_chart(
     return fig, axes
 
 
-def create_status_horizontal_bars(
-    data, x_col, y_col, title, x_title, y_title, figsize=(10, 6), colormap="spring"
+def create_ring_chart(
+    data,
+    value_col,
+    label_col,
+    title,
+    figsize=(20, 12),
+    colormap="tab10",
+    center_text="Total",
+    percent_threshold=2
 ):
     """
-    Create horizontal bar chart with percentage labels for viewing statuses.
-
+    Generic function to create a Ring Chart (Donut).
+    
     Parameters
     ----------
-    data : pd. DataFrame
-        Data with status counts and percentages
-    x_col :  str
-        Column for x-axis (count values)
-    y_col : str
-        Column for y-axis (status categories)
+    data : pd.DataFrame
+        DataFrame containing the data.
+    value_col : str
+        Name of the column with numerical values.
+    label_col : str
+        Name of the column with category labels.
     title : str
-        Chart title
-    x_title :  str
-        X-axis label
-    y_title : str
-        Y-axis label
-    figsize : tuple, default=(10, 6)
-        Figure size (width, height)
-    colormap : str, default='spring'
-        Matplotlib colormap name
+        Chart title.
+    figsize : tuple, default=(20, 12)
+        Figure size.
+    colormap : str, default='tab10'
+        Matplotlib colormap name.
+    center_text : str, default='Total'
+        Title text to display in the center hole.
+    percent_threshold : float, default=3
+        Hide percentage text inside slices smaller than this value.
 
     Returns
     -------
     matplotlib.figure.Figure, matplotlib.axes.Axes
     """
-    cmap = getattr(plt.cm, colormap)
-    colors = [cmap(i / len(data)) for i in range(len(data))]
-
+    # Sort by value descending (Visual best practice)
+    data = data.sort_values(by=value_col, ascending=False).copy()
+    
+    values = data[value_col]
+    labels = data[label_col]
+    
+    # Setup Figure
     fig, ax = plt.subplots(figsize=figsize)
-    bars = ax.barh(data[y_col], data[x_col], color=colors)
+    
+    # Handle Colors
+    if colormap == "tab10":
+        colors = plt.get_cmap('tab10').colors
+    else:
+        cmap = getattr(cm, colormap)
+        colors = cmap(np.linspace(0.2, 0.8, len(data)))
 
-    # Add labels with counts and percentages
-    max_count = data[x_col].max()
-    for i, (status, count, pct) in enumerate(
-        zip(data[y_col], data[x_col], data["percentage"])
-    ):
-        label = f"{int(count):,} ({pct:.1f}%)"
-        bar = bars[i]
-        ax.text(
-            count + max_count * 0.01,
-            bar.get_y() + bar.get_height() / 2,
-            label,
-            va="center",
-            ha="left",
-            fontsize=10,
-            color="black",
-            weight="bold",
-        )
+    # Draw Chart
+    wedges, texts, autotexts = ax.pie(
+        values,
+        labels=None, # We use a side legend instead
+        autopct='%1.1f%%',
+        startangle=90,
+        pctdistance=0.82,
+        colors=colors,
+        wedgeprops=dict(width=0.4, edgecolor='white'),
+        textprops={'fontsize': 14, 'weight': 'bold', 'color': 'white'}
+    )
 
-    # Styling
-    ax.set_xlim(0, max_count * 1.20)
-    ax.set_xlabel(x_title, fontsize=12)
-    ax.set_ylabel(y_title, fontsize=12)
-    ax.set_title(title, fontsize=14, weight="bold")
+    # Filter Small Percentages (because the text becomes unreadable)
+    total_val = values.sum()
+    for autotext, val in zip(autotexts, values):
+        percentage = val / total_val * 100
+        if percentage < percent_threshold:
+            autotext.set_text("") 
 
-    # Format x-axis
-    ax.xaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f"{int(x):,}"))
-    ax.grid(axis="x", alpha=0.3, linestyle="--")
-    ax.set_axisbelow(True)
+    # Titles & Center Text
+    ax.set_title(title, fontsize=24, fontweight='bold')
+    
+    ax.text(0, 0, f"{center_text}\n{total_val:,.0f}", 
+            ha='center', va='center', fontsize=18, fontweight='bold', color='#333')
 
-    # Remove spines
-    for spine in ["top", "right", "left", "bottom"]:
-        ax.spines[spine].set_visible(False)
-
-    plt.tight_layout()
+    # Legend
+    ax.legend(
+        wedges, labels,
+        title_fontsize=16,
+        fontsize=14,
+        loc="center left",
+        bbox_to_anchor=(1, 0, 0.5, 1),
+        frameon=False
+    )
 
     return fig, ax
 

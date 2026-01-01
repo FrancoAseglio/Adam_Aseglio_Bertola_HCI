@@ -7,12 +7,9 @@ User distribution by country and language.
 
 import numpy as np
 import math as math
-import matplotlib.pyplot as plt
-import matplotlib.cm as cm
 import plotly.express as px
 
 from .data_prep import prepare_country_data
-from .dev_utils import add_count_on_bars
 
 
 def create_animated_map(profiles_df):
@@ -63,82 +60,3 @@ def create_animated_map(profiles_df):
     )
 
     return fig
-
-
-def language_vs_geographic_distribution(profiles_df, figsize=(10, 6)):
-    """
-    Create a bar chart showing user distribution by primary language.
-
-    Parameters
-    ----------
-    profiles_df : pd.DataFrame
-        User profiles with location data
-    figsize : tuple, default=(10, 6)
-
-    Returns
-    -------
-    matplotlib.figure.Figure, matplotlib.axes.Axes
-    """
-    language_map = {
-        "United States": "English",
-        "Canada": "English",
-        "United Kingdom": "English",
-        "Australia": "English",
-        "New Zealand": "English",
-        "Ireland": "English",
-        "France": "French",
-        "Belgium": "French",
-        "Switzerland": "French",
-        "Germany": "German",
-        "Austria": "German",
-        "Spain": "Spanish",
-        "Mexico": "Spanish",
-        "Argentina": "Spanish",
-        "Brazil": "Portuguese",
-        "Portugal": "Portuguese",
-        "Italy": "Italian",
-        "Japan": "Japanese",
-        "South Korea": "Korean",
-        "China": "Chinese",
-        "Thailand": "Thai",
-        "Philippines": "English",
-        "Poland": "Polish",
-        "Russia": "Russian",
-    }
-
-    profiles_with_lang = profiles_df.copy()
-    profiles_with_lang["language"] = profiles_with_lang["location"].map(language_map)
-
-    language_users = (
-        profiles_with_lang.groupby("language").size().reset_index(name="total_users")
-    )
-    language_users = language_users.dropna().sort_values("total_users", ascending=False)
-
-    fig, ax = plt.subplots(figsize=figsize)
-
-    bars = ax.bar(
-        range(len(language_users)),
-        language_users["total_users"],
-        color=cm.viridis_r(np.linspace(0.2, 0.9, len(language_users))),
-    )
-
-    ax.set_xticks(range(len(language_users)))
-    ax.set_xticklabels(language_users["language"].values, rotation=45, ha="right")
-    ax.set_ylabel("Total Users", fontsize=12, fontweight="bold")
-    ax.set_title(
-        "Anime User Distribution by Primary Language",
-        fontsize=14,
-        fontweight="bold",
-        pad=20,
-    )
-
-    add_count_on_bars(ax)
-
-    ax.spines["top"].set_visible(False)
-    ax.spines["right"].set_visible(False)
-    ax.grid(axis="y", alpha=0.3, linestyle="--")
-
-    plt.tight_layout()
-
-    return fig, ax
-

@@ -37,7 +37,6 @@ from .engagement_analysis import (
 
 from .geo_analysis import (
     create_animated_map as _create_animated_map,
-    language_vs_geographic_distribution as _language_vs_geographic_distribution,
 )
 
 from .recommendation_analysis import (
@@ -467,27 +466,6 @@ def create_animated_map():
 
     data = _load_data()
     return _create_animated_map(data["profiles_df"])
-
-
-def language_vs_geographic_distribution():
-    """
-    Create a bar chart showing user distribution by primary language.
-
-    Parameters
-    ----------
-    profiles_df : pd.DataFrame
-        User profiles with location and primary language
-    figsize : tuple, default=(10, 6)
-        Figure size (width, height)
-
-    Returns
-    -------
-    fig : matplotlib Figure
-    ax : matplotlib Axes
-    """
-
-    data = _load_data()
-    return _language_vs_geographic_distribution(data["profiles_df"], figsize=(10, 6))
 
 
 # ========================================

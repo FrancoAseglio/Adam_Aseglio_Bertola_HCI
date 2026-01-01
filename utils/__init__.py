@@ -43,7 +43,6 @@ from .engagement_analysis import (
 
 from .geo_analysis import (
     create_animated_map,
-    language_vs_geographic_distribution,
 )
 
 from .recommendation_analysis import (
@@ -94,7 +93,6 @@ __all__ = [
 
     #Geographic Analysis
     "create_animated_map",
-    "language_vs_geographic_distribution",
 
     # Recommendation Analysis
     "recommendation_genre_cooccurrence",
