@@ -45,6 +45,11 @@ from .geo_analysis import (
     create_animated_map,
 )
 
+from .user_behavior_analysis import(
+    viewing_status_distribution,
+    genre_preferences_by_persona,
+)
+
 from .recommendation_analysis import (
     recommendation_genre_cooccurrence,
     recommendation_type_patterns,
@@ -97,4 +102,8 @@ __all__ = [
     # Recommendation Analysis
     "recommendation_genre_cooccurrence",
     "recommendation_type_patterns",
+
+    # User Behavior
+    "viewing_status_distribution",
+    "genre_preferences_by_persona",
 ]

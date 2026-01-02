@@ -620,88 +620,62 @@ def create_ring_chart(
     value_col,
     label_col,
     title,
-    figsize=(20, 12),
-    colormap="tab10",
+    figsize=(12, 8),
     center_text="Total",
-    percent_threshold=2
+    percent_threshold=1
 ):
     """
-    Generic function to create a Ring Chart (Donut).
-    
-    Parameters
-    ----------
-    data : pd.DataFrame
-        DataFrame containing the data.
-    value_col : str
-        Name of the column with numerical values.
-    label_col : str
-        Name of the column with category labels.
-    title : str
-        Chart title.
-    figsize : tuple, default=(20, 12)
-        Figure size.
-    colormap : str, default='tab10'
-        Matplotlib colormap name.
-    center_text : str, default='Total'
-        Title text to display in the center hole.
-    percent_threshold : float, default=3
-        Hide percentage text inside slices smaller than this value.
-
-    Returns
-    -------
-    matplotlib.figure.Figure, matplotlib.axes.Axes
+    Simplified Ring Chart: White background and all-black text.
     """
-    # Sort by value descending (Visual best practice)
     data = data.sort_values(by=value_col, ascending=False).copy()
-    
     values = data[value_col]
     labels = data[label_col]
+    total_val = values.sum()
     
-    # Setup Figure
-    fig, ax = plt.subplots(figsize=figsize)
+    modern_colors = ['#00d2ff', '#ff9f43', '#1dd1a1', '#ff6b6b', '#a29bfe']
     
-    # Handle Colors
-    if colormap == "tab10":
-        colors = plt.get_cmap('tab10').colors
-    else:
-        cmap = getattr(cm, colormap)
-        colors = cmap(np.linspace(0.2, 0.8, len(data)))
-
-    # Draw Chart
+    fig, ax = plt.subplots(figsize=figsize, facecolor='white') 
+    ax.set_facecolor('white')
+    
     wedges, texts, autotexts = ax.pie(
         values,
-        labels=None, # We use a side legend instead
         autopct='%1.1f%%',
-        startangle=90,
-        pctdistance=0.82,
-        colors=colors,
-        wedgeprops=dict(width=0.4, edgecolor='white'),
-        textprops={'fontsize': 14, 'weight': 'bold', 'color': 'white'}
+        startangle=140, 
+        pctdistance=0.76, 
+        colors=modern_colors[:len(data)],
+        wedgeprops=dict(width=0.5, edgecolor='white', linewidth=2),
+        textprops={'weight': 'bold', 'color': 'black'} 
     )
 
-    # Filter Small Percentages (because the text becomes unreadable)
-    total_val = values.sum()
-    for autotext, val in zip(autotexts, values):
-        percentage = val / total_val * 100
+    for i, p in enumerate(autotexts):
+        percentage = values.iloc[i] / total_val * 100
         if percentage < percent_threshold:
-            autotext.set_text("") 
+            p.set_text("")
+        elif percentage < 5:
+            p.set_fontsize(9)
+        else:
+            p.set_fontsize(11)
 
-    # Titles & Center Text
-    ax.set_title(title, fontsize=24, fontweight='bold')
-    
+    text_color = '#222222'
+
     ax.text(0, 0, f"{center_text}\n{total_val:,.0f}", 
-            ha='center', va='center', fontsize=18, fontweight='bold', color='#333')
+            ha='center', va='center', fontsize=15, fontweight='bold', color=text_color)
 
-    # Legend
-    ax.legend(
+    ax.set_title(title, fontsize=22, fontweight='bold', pad=25, color=text_color)
+
+    leg = ax.legend(
         wedges, labels,
-        title_fontsize=16,
-        fontsize=14,
+        title="Status",
         loc="center left",
-        bbox_to_anchor=(1, 0, 0.5, 1),
-        frameon=False
+        bbox_to_anchor=(1.1, 0.5),
+        frameon=False,
+        fontsize=13,
+        labelcolor=text_color
     )
+    leg.get_title().set_fontweight('bold')
+    leg.get_title().set_color(text_color)
 
+    plt.tight_layout()
     return fig, ax
 
 

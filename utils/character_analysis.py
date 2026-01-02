@@ -5,9 +5,9 @@ Character Analysis Functions
 Character popularity and voice actor analysis.
 """
 
-import numpy as np
+# import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.cm as cm
+# import matplotlib.cm as cm
 import plotly.graph_objects as go
 
 from .data_prep import prepare_character_favorites, explode_genres
@@ -21,15 +21,33 @@ def voice_actor_character_popularity(
     person_voice_works_df,
     person_details_df,
     top_n=10,
-    character_threshold=0,
+    character_threshold=50,
     figsize=(16, 8),
 ):
     """
-    Analyze the correlation between voice actors and character popularity using shared viz components.
-    
-    Delegates plotting to:
-    - viz_components.create_dual_horizontal_bar_chart (layout & styling)
-    - dev_utils.add_count_on_horizontal_bars (vectorized labeling)
+    Analyze the correlation between voice actors and character popularity.
+
+    Parameters
+    ----------
+    characters_df : pd.DataFrame
+        DataFrame containing character metadata (e.g., character_mal_id).
+    favs_df : pd.DataFrame
+        DataFrame containing favorites/popularity counts for characters.
+    person_voice_works_df : pd.DataFrame
+        Mapping of voice actors to the character IDs they have voiced.
+    person_details_df : pd.DataFrame
+        Metadata for the voice actors, including their real names.
+    top_n : int, default=10
+        The number of top performers to display in each subplot.
+    character_threshold : int, default=50
+        Minimum number of characters a VA must have voiced to be included. 
+    figsize : tuple, default=(16, 8)
+        The dimensions of the resulting matplotlib figure.
+
+    Returns
+    -------
+    matplotlib.figure.Figure, np.ndarray
+        The figure object and an array of the two subplots (axes).
     """
     # Data Preparation
     char_data = prepare_character_favorites(characters_df, favs_df)
@@ -52,7 +70,7 @@ def voice_actor_character_popularity(
     va_stats = va_stats.merge(
         person_details_df[["person_mal_id", "name"]], on="person_mal_id", how="left"
     )
-    
+
     # Filter for minimum relevance
     va_stats = va_stats[va_stats["num_characters"] >= character_threshold]
 
@@ -74,18 +92,16 @@ def voice_actor_character_popularity(
         colors=None,
         figsize=figsize,
         colormap_left="plasma",
-        colormap_right="viridis" 
+        colormap_right="viridis",
     )
 
-    add_count_on_horizontal_bars(axes[0], fmt='{:,.0f}')
-    add_count_on_horizontal_bars(axes[1], fmt='{:.0f}') 
+    add_count_on_horizontal_bars(axes[0], fmt="{:,.0f}")
+    add_count_on_horizontal_bars(axes[1], fmt="{:.0f}")
 
     return fig, axes
 
 
-def character_popularity_by_role(
-    characters_df, favs_df, character_anime_works_df, figsize=(14, 5)
-):
+def character_popularity_by_role(characters_df, favs_df, character_anime_works_df, figsize=(14, 5)):
     """
     Analyze and visualize character popularity based on their role in anime.
 
@@ -102,9 +118,7 @@ def character_popularity_by_role(
     """
     char_data = prepare_character_favorites(characters_df, favs_df)
 
-    char_roles = character_anime_works_df.merge(
-        char_data, on="character_mal_id", how="inner"
-    )
+    char_roles = character_anime_works_df.merge(char_data, on="character_mal_id", how="inner")
 
     role_analysis = (
         char_roles.groupby("role")

@@ -554,7 +554,7 @@ def viewing_status_distribution():
     return fig, ax
 
 
-def genre_preferences_by_persona(_top_n):
+def genre_preferences_by_persona(top_n):
     """
     Analyze and visualize genre preferences by fan persona.
 
@@ -581,7 +581,7 @@ def genre_preferences_by_persona(_top_n):
         data["favs_df"],
         data["details_df"],
         min_anime=10,
-        top_n=_top_n,
+        top_n=top_n,
         figsize=(10, 8),
     )
 

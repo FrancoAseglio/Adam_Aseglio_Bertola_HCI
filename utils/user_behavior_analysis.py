@@ -17,30 +17,42 @@ from .viz_components import (
 )
 
 
-def viewing_status_distribution(stats_df, figsize=(20, 12)):
+def viewing_status_distribution(stats_df, figsize=(12, 8)):
     """
     Visualize the overall distribution of viewing statuses using a generic Ring Chart.
+
+    Parameters
+    ----------
+    stats_df : pd.DataFrame
+        The raw dataframe containing viewing status counts.
+    figsize : tuple, default=(12, 8)
+        The dimensions of the resulting figure.
+
+    Returns
+    -------
+    matplotlib.figure.Figure, matplotlib.axes.Axes
+        The figure and axes objects containing the ring chart.
     """
-    # Prepare Data
     status_df = prepare_viewing_status_data(stats_df)
     
-    # Clean Labels specific to this dataset
-    status_df['status_label'] = status_df['status'].astype(str).str.replace('_', ' ').str.title()
-    
+    status_df['status_label'] = (
+        status_df['status']
+        .astype(str)
+        .str.replace('_', ' ')
+        .str.title()
+    )
+
     return create_ring_chart(
         data=status_df,
         value_col='count',
         label_col='status_label',
         title="Viewing Status Distribution",
         figsize=figsize,
-        colormap="tab10",
-        center_text="Total Interactions"
+        center_text="Total Interactions",
+        percent_threshold=1 
     )
 
-
-def genre_preferences_by_persona(
-    profiles_df, favs_df, details_df, min_anime=10, top_n=15, figsize=(10, 8)
-):
+def genre_preferences_by_persona(profiles_df, favs_df, details_df, min_anime=10, top_n=15, figsize=(10, 8)):
     """
     Analyze and visualize genre preferences by fan persona.
 
@@ -67,21 +79,16 @@ def genre_preferences_by_persona(
     fig : matplotlib.figure.Figure
     ax :  matplotlib.axes.Axes
     """
-    # Prepare active users with personas
     active_users = prepare_active_users_with_personas(profiles_df, min_anime=min_anime)
 
-    # Prepare genre-persona data
-    heatmap_data = prepare_persona_genre_data(
-        active_users, favs_df, details_df, top_n=top_n
-    )
+    heatmap_data = prepare_persona_genre_data(active_users, favs_df, details_df, top_n=top_n)
 
-    # Create visualization
     fig, ax = create_heatmap(
         data=heatmap_data,
         title=f"Genre Preferences by Fan Persona (Top {top_n} Genres)",
         x_label="Fan Persona",
         y_label="Genre",
-        cmap="rocket",
+        cmap="rocket_r",
         figsize=figsize,
         annot_format=".1f",
     )
