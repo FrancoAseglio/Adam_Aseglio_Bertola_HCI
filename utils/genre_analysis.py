@@ -48,6 +48,12 @@ def genre_comparison_watched_vs_liked(
     # ========================================
     # LEFT:  Most Watched Genres
     # ========================================
+    # Ensure mal_id has consistent dtype
+    details_df = details_df.copy()
+    stats_df = stats_df.copy()
+    details_df['mal_id'] = details_df['mal_id'].astype('int64')
+    stats_df['mal_id'] = stats_df['mal_id'].astype('int64')
+    
     merged_watched = details_df.merge(
         stats_df[["mal_id", "watching", "completed", "on_hold", "dropped"]],
         on="mal_id",
@@ -83,6 +89,7 @@ def genre_comparison_watched_vs_liked(
 
     # RIGHT: Most Liked Genres
     anime_favs = favs_df[favs_df["fav_type"] == "anime"].copy()
+    anime_favs['id'] = anime_favs['id'].astype('int64')
     merged_liked = anime_favs.merge(
         details_df, left_on="id", right_on="mal_id", how="inner"
     )
@@ -113,7 +120,7 @@ def genre_evolution_over_time(
     details_df,
     stats_df,
     top_n=10,
-    year_range=None,
+    year_range=(1965, 2025),
     figsize=(1400, 700),
     smooth=False,
 ):
@@ -141,7 +148,12 @@ def genre_evolution_over_time(
     plotly.graph_objects.Figure
     """
 
-    # Prepare data
+    # Prepare data - ensure mal_id types match
+    details_df = details_df.copy()
+    stats_df = stats_df.copy()
+    details_df["mal_id"] = details_df["mal_id"].astype("int64")
+    stats_df["mal_id"] = stats_df["mal_id"].astype("int64")
+    
     data = details_df.merge(
         stats_df[["mal_id", "watching", "completed", "on_hold", "dropped"]],
         on="mal_id",
