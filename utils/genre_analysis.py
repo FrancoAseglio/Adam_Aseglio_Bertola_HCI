@@ -113,7 +113,7 @@ def genre_evolution_over_time(
     details_df,
     stats_df,
     top_n=10,
-    year_range=None,
+    year_range=(1965, 2025),
     figsize=(1400, 700),
     smooth=False,
 ):

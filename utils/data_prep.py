@@ -202,25 +202,31 @@ def prepare_episode_score_data(
 
 
 def fill_missing_years(df):
-    """Fill missing years for each genre to avoid line gaps."""
+    """
+    Fill missing years for each genre to avoid line gaps using vectorized operations.
+    Creates a full Cartesian product (All Years x All Genres) and merges data.
+    """
+    # Create DataFrames for unique Years and Genres
+    all_years = pd.DataFrame({
+        "year": range(int(df["year"].min()), int(df["year"].max()) + 1)
+    })
+    all_genres = pd.DataFrame({
+        "genres_list": df["genres_list"].unique()
+    })
 
-    all_years = range(int(df["year"].min()), int(df["year"].max()) + 1)
-    genres = df["genres_list"].unique()
+    # Cross join for full grid
+    full_grid = all_years.merge(all_genres, how="cross")
 
-    complete_data = []
-    for genre in genres:
-        genre_data = df[df["genres_list"] == genre]
-        full_index = pd.DataFrame({"year": list(all_years), "genres_list": genre})
-        genre_complete = full_index.merge(
-            genre_data, on=["year", "genres_list"], how="left"
-        )
-        genre_complete["popularity"] = genre_complete["popularity"].fillna(0)
-        genre_complete["anime_count"] = (
-            genre_complete["anime_count"].fillna(0).astype(int)
-        )
-        complete_data.append(genre_complete)
+    # Merge with original data
+    filled_df = full_grid.merge(
+        df, on=["year", "genres_list"], how="left"
+    )
 
-    return pd.concat(complete_data, ignore_index=True)
+    # Filling NaN with zeros for popularity and anime_count
+    filled_df["popularity"] = filled_df["popularity"].fillna(0)
+    filled_df["anime_count"] = filled_df["anime_count"].fillna(0).astype(int)
+
+    return filled_df
 
 
 # ------------------------------
@@ -399,33 +405,41 @@ def prepare_completion_drop_data(stats_df, min_members=100):
 def prepare_country_data(profiles_df):
     """
     Prepare geographic distribution data with country codes.
-
-    Parameters
-    ----------
-    profiles_df : pd.DataFrame
-        User profiles with location data
-
-    Returns
-    -------
-    pd.DataFrame
-        Aggregated country-year statistics
+    Uses pandas apply and list expansion for cleaner syntax.
     """
-
     profiles_df = profiles_df.copy()
+    
+    # Date Processing: Extract year from 'joined' column
     profiles_df["year_label"] = pd.to_datetime(
         profiles_df["joined"], errors="coerce"
     ).dt.year
-    profiles_df[["country", "country_code"]] = profiles_df["location"].apply(
-        lambda x: pd.Series(get_country_code(x))
+
+    # Country Mapping using apply
+    mapped_locations = profiles_df["location"].apply(
+        lambda x: get_country_code(x) or (None, None)
+    )
+    
+    # Transform to DataFrame for efficiency
+    loc_df = pd.DataFrame(
+        mapped_locations.tolist(), 
+        columns=["country", "country_code"], 
+        index=profiles_df.index
     )
 
+    # Coloumn Assignment
+    profiles_df["country"] = loc_df["country"]
+    profiles_df["country_code"] = loc_df["country_code"]
+
+    # Aggregation by country and year
     profiles_with_country = profiles_df[profiles_df["country_code"].notna()].copy()
+    
     country_year_counts = (
         profiles_with_country.groupby(["country", "country_code", "year_label"])
         .size()
         .reset_index(name="user_count")
     )
 
+    # Cumulative sum per country
     country_year_counts = country_year_counts.sort_values(["country", "year_label"])
     country_year_counts["cumulative_users"] = country_year_counts.groupby("country")[
         "user_count"

@@ -81,15 +81,6 @@ def print_distance_distribution(valid_stats, valid_ratings):
     print_distribution_for_dataset("RATINGS_DF", valid_ratings, "distance_ratings", labels, bins)
 
 
-def print_prediction_table(data, distance_col, score_computed_col, n=20):
-    """Print a formatted table of predictions"""
-    print(f"{'MAL_ID': >10} {'Actual':>8} {'Computed':>8} {'Distance':>10}")
-    print("-" * 40)
-    for _, row in data.iterrows():
-        print(f"{int(row['mal_id']):>10} {row['score']:>8.4f} {row[score_computed_col]:>8.4f} {row[distance_col]:>10.4f}")
-    print()
-
-
 def print_detailed_report(comparison, valid_stats, valid_ratings, mean_distance_stats, mean_distance_ratings):
     """Print comprehensive analysis report to console"""
     print_metadata(comparison, valid_stats, valid_ratings)
@@ -179,15 +170,15 @@ def downcast_df(df: pd.DataFrame, inplace: bool = False) -> pd.DataFrame:
     for col in df.columns:
         col_type = df[col].dtype
 
-        # 1. Integer downcast
+        # Integer downcast
         if pd.api.types.is_integer_dtype(col_type):
             df[col] = pd.to_numeric(df[col], downcast="integer")
 
-        # 2. Float downcast
+        # Float downcast
         elif pd.api.types.is_float_dtype(col_type):
             df[col] = pd.to_numeric(df[col], downcast="float")
 
-        # 3. Handle object columns
+        # Handle object columns
         elif col_type == "object":
             # Skip if column is empty or all null
             col_series = df[col]
@@ -205,12 +196,7 @@ def downcast_df(df: pd.DataFrame, inplace: bool = False) -> pd.DataFrame:
                     df[col] = converted
                     continue
 
-            # Convert to category if low cardinality
-            n_unique = col_series.nunique(dropna=True)
-            if n_unique > 0:  # Avoid division by zero
-                cardinality = n_unique / len(df)
-                if cardinality < 0.5:
-                    df[col] = col_series.astype("category")
+            # Don't convert in other cases
 
     return df
 
@@ -240,41 +226,53 @@ def parse_list(s: str) -> List[str]:
     return matches
 
 
-def add_count_on_bars(ax, fontsize: int = 9, offset: int = 5) -> None:
+def add_count_on_vertical_bars(ax, fmt='{:,.0f}', padding=5, fontsize=9) -> None:
     """
-    Add count labels on top of bar chart bars.
-    Labels are centered above each bar showing the bar's height as an integer.
-    Zero-height bars are skipped.
-
-    Parameters
-    ----------
-    ax : matplotlib.axes.Axes
-        Matplotlib axes object containing the bar chart.
-    fontsize : int, optional
-        Font size for the count labels, by default 9.
-    offset : int, optional
-        Vertical offset in points for label placement, by default 5.
-
-    Returns
-    -------
-    None
-        Modifies the axes object in place by adding annotations.
+    Add labels on top of VERTICAL bar chart bars using direct vectorization.
+    Assumes a single data series (ax.containers[0]).
     """
-    max_height = 0
+    if not ax.containers:
+        return
 
-    for patch in ax.patches:
-        height = patch.get_height()
-        if height != 0:
-            max_height = max(max_height, height)
-            ax.annotate(
-                f"{int(height):,}",
-                (patch.get_x() + patch.get_width() / 2.0, height),
-                ha="center",
-                va="bottom",
-                fontsize=fontsize,
-                fontweight="bold",
-                color="black",
-                xytext=(0, offset),
-                textcoords="offset points",
-            )
-    ax.set_ylim(0, max_height * 1.20)
+    # Direct access to the first container
+    container = ax.containers[0]
+    
+    # Vectorized labeling
+    ax.bar_label(
+        container, 
+        fmt=fmt, 
+        padding=padding, 
+        fontsize=fontsize, 
+        fontweight='bold'
+    )
+    
+    # Calculate Y-axis limit using NumPy
+    if len(container.datavalues) > 0:
+        max_height = np.max(container.datavalues)
+        ax.set_ylim(0, max_height * 1.20)
+
+
+def add_count_on_horizontal_bars(ax, fmt='{:,.0f}', padding=5, fontsize=10) -> None:
+    """
+    Add labels to the right of HORIZONTAL bar chart bars using direct vectorization.
+    Assumes a single data series (ax.containers[0]).
+    """
+    if not ax.containers:
+        return
+
+    # 1. Accesso diretto
+    container = ax.containers[0]
+
+    # 2. Etichettatura vettorizzata
+    ax.bar_label(
+        container, 
+        fmt=fmt, 
+        padding=padding, 
+        fontsize=fontsize, 
+        fontweight='bold'
+    )
+        
+    # 3. Calcolo del limite X usando NumPy
+    if len(container.datavalues) > 0:
+        max_width = np.max(container.datavalues)
+        ax.set_xlim(0, max_width * 1.15)
