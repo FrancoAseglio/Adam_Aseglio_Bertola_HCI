@@ -8,14 +8,12 @@ High-level wrapper functions that load data and call analysis functions.
 import pandas as pd
 from pathlib import Path
 
-from .dev_utils import downcast_df
-
 from .studio_analysis import (
     studio_performance_analysis as _studio_performance,
 )
 
 from .episode_analysis import (
-    anime_episode_range_analysis as _episode_distribution,
+    anime_distribution_by_episode_range as _episode_distribution,
     episode_score_correlation_analysis as _episode_correlation,
 )
 
@@ -79,18 +77,18 @@ def _load_data():
         'num_watched_episodes': 'int32'
     }
 
-    _DATA_CACHE["character_anime_works_df"] = downcast_df(pd.read_csv(INPUT_DIR_PATH / f"character_anime_works_clean{FILE_EXTENSION}"))
-    _DATA_CACHE["character_nicknames_df"] =downcast_df(pd.read_csv(INPUT_DIR_PATH / f"character_nicknames_clean{FILE_EXTENSION}"))
-    _DATA_CACHE["characters_df"] = downcast_df(pd.read_csv(INPUT_DIR_PATH / f"characters_clean{FILE_EXTENSION}"))
-    _DATA_CACHE["details_df"] = downcast_df(pd.read_csv(INPUT_DIR_PATH / f"details_clean{FILE_EXTENSION}"))
-    _DATA_CACHE["favs_df"] = downcast_df(pd.read_csv(INPUT_DIR_PATH / f"favs_clean{FILE_EXTENSION}"))
-    _DATA_CACHE["person_alternate_names_df"] = downcast_df(pd.read_csv(INPUT_DIR_PATH / f"person_alternate_names_clean{FILE_EXTENSION}"))
-    _DATA_CACHE["person_anime_works_df"] = downcast_df(pd.read_csv(INPUT_DIR_PATH / f"person_anime_works_clean{FILE_EXTENSION}"))
-    _DATA_CACHE["person_details_df"] = downcast_df(pd.read_csv(INPUT_DIR_PATH / f"person_details_clean{FILE_EXTENSION}"))
-    _DATA_CACHE["person_voice_works_df"] = downcast_df(pd.read_csv(INPUT_DIR_PATH / f"person_voice_works_clean{FILE_EXTENSION}"))
-    _DATA_CACHE["profiles_df"] = downcast_df(pd.read_csv(INPUT_DIR_PATH / f"profiles_clean{FILE_EXTENSION}"))
-    _DATA_CACHE["recommendations_df"] = downcast_df(pd.read_csv(INPUT_DIR_PATH / f"recommendations_clean{FILE_EXTENSION}"))
-    _DATA_CACHE["stats_df"] = downcast_df(pd.read_csv(INPUT_DIR_PATH / f"stats_clean{FILE_EXTENSION}"))
+    _DATA_CACHE["character_anime_works_df"] = pd.read_csv(INPUT_DIR_PATH / f"character_anime_works_clean{FILE_EXTENSION}")
+    _DATA_CACHE["character_nicknames_df"] = pd.read_csv(INPUT_DIR_PATH / f"character_nicknames_clean{FILE_EXTENSION}")
+    _DATA_CACHE["characters_df"] = pd.read_csv(INPUT_DIR_PATH / f"characters_clean{FILE_EXTENSION}")
+    _DATA_CACHE["details_df"] = pd.read_csv(INPUT_DIR_PATH / f"details_clean{FILE_EXTENSION}")
+    _DATA_CACHE["favs_df"] = pd.read_csv(INPUT_DIR_PATH / f"favs_clean{FILE_EXTENSION}")
+    _DATA_CACHE["person_alternate_names_df"] = pd.read_csv(INPUT_DIR_PATH / f"person_alternate_names_clean{FILE_EXTENSION}")
+    _DATA_CACHE["person_anime_works_df"] = pd.read_csv(INPUT_DIR_PATH / f"person_anime_works_clean{FILE_EXTENSION}")
+    _DATA_CACHE["person_details_df"] = pd.read_csv(INPUT_DIR_PATH / f"person_details_clean{FILE_EXTENSION}")
+    _DATA_CACHE["person_voice_works_df"] = pd.read_csv(INPUT_DIR_PATH / f"person_voice_works_clean{FILE_EXTENSION}")
+    _DATA_CACHE["profiles_df"] = pd.read_csv(INPUT_DIR_PATH / f"profiles_clean{FILE_EXTENSION}")
+    _DATA_CACHE["recommendations_df"] = pd.read_csv(INPUT_DIR_PATH / f"recommendations_clean{FILE_EXTENSION}")
+    _DATA_CACHE["stats_df"] = pd.read_csv(INPUT_DIR_PATH / f"stats_clean{FILE_EXTENSION}")
 
     return _DATA_CACHE
 
@@ -150,7 +148,7 @@ def studio_performance_analysis(min_anime_threshold=5, top_n=10, figsize=(16, 8)
 # ========================================
 
 
-def anime_episode_range_analysis(figsize=(14, 5)):
+def anime_distribution_by_episode_range(figsize=(14, 5)):
     """
     Analyze and visualize anime distribution and average scores by episode ranges.
 

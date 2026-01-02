@@ -9,7 +9,7 @@ from .data_prep import prepare_episode_score_data, aggregate_by_dimension
 from .viz_components import create_dual_bar_chart, create_hexbin_violin_plot
 
 
-def anime_episode_range_analysis(
+def anime_distribution_by_episode_range(
     details_df, stats_df, bins=None, labels=None, figsize=(14, 5)
 ):
     """
@@ -75,7 +75,7 @@ def anime_episode_range_analysis(
         x_col="episode_category",
         y_cols=["anime_count", "avg_score"],
         titles=[
-            "Anime Count by Episode Range",
+            "Anime Distribution by Episode Range",
             "Average Score by Episode Range",
         ],
         y_titles=["Number of Anime", "Average Score"],

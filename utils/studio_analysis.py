@@ -6,7 +6,6 @@ Studio productivity and quality analysis.
 """
 
 from .data_prep import prepare_studio_data
-from .dev_utils import add_count_on_horizontal_bars
 from .viz_components import create_dual_horizontal_bar_chart
 
 
@@ -19,6 +18,26 @@ def studio_performance_analysis(
     Shows:
     - Left: Top studios by number of anime produced (prolific)
     - Right: Top studios by average score (quality)
+
+    Parameters
+    ----------
+    details_df : pd.DataFrame
+        Anime details with studios column
+    stats_df : pd. DataFrame
+        Anime statistics dataset
+    min_anime_threshold :  int, default=5
+        Minimum number of anime for a studio to be included
+    top_n :  int, default=10
+        Number of top studios to display in each chart
+    figsize : tuple, default=(16, 8)
+        Figure size (width, height)
+
+    Returns
+    -------
+    fig :  matplotlib. figure.Figure
+    axes : np.ndarray of matplotlib.axes.Axes
+    studio_analysis : pd.DataFrame
+        DataFrame with studio metrics (Avg Score, Count)
     """
     # Prepare data
     studio_analysis = prepare_studio_data(
@@ -46,10 +65,5 @@ def studio_performance_analysis(
         colormap_left="magma",
         colormap_right="viridis",
     )
-    
-    add_count_on_horizontal_bars(axes[0])
-    add_count_on_horizontal_bars(axes[1], fmt="{:.2f}")
-
-    axes[1].set_xlim(0, 10.5)
 
     return fig, axes

@@ -19,7 +19,7 @@ from .studio_analysis import (
 )
 
 from .episode_analysis import (
-    anime_episode_range_analysis,
+    anime_distribution_by_episode_range,
     episode_score_correlation_analysis,
 )
 
@@ -63,7 +63,7 @@ __all__ = [
     "studio_performance_analysis",
 
     # Episode Analysis
-    "anime_episode_range_analysis",
+    "anime_distribution_by_episode_range",
     "episode_score_correlation_analysis",
 
     # Genre Analysis

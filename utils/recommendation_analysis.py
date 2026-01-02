@@ -38,12 +38,6 @@ def recommendation_genre_cooccurrence(
     plotly.graph_objects.Figure
     """
     anime_genres = explode_genres(details_df[["mal_id", "title", "genres"]])
-    
-    # Ensure mal_id columns have compatible dtypes for merge
-    anime_genres["mal_id"] = anime_genres["mal_id"].astype("int64")
-    recommendations_df = recommendations_df.copy()
-    recommendations_df["mal_id"] = recommendations_df["mal_id"].astype("int64")
-    recommendations_df["recommendation_mal_id"] = recommendations_df["recommendation_mal_id"].astype("int64")
 
     rec_with_genres = recommendations_df.merge(
         anime_genres, left_on="mal_id", right_on="mal_id", how="inner"
@@ -158,20 +152,13 @@ def recommendation_type_patterns(
     -------
     plotly.graph_objects.Figure
     """
-    # Ensure mal_id columns have compatible dtypes for merge
-    details_subset = details_df[["mal_id", "type", "title"]].copy()
-    details_subset["mal_id"] = details_subset["mal_id"].astype("int64")
-    recommendations_df_copy = recommendations_df.copy()
-    recommendations_df_copy["mal_id"] = recommendations_df_copy["mal_id"].astype("int64")
-    recommendations_df_copy["recommendation_mal_id"] = recommendations_df_copy["recommendation_mal_id"].astype("int64")
-    
-    rec_types = recommendations_df_copy.merge(
-        details_subset,
+    rec_types = recommendations_df.merge(
+        details_df[["mal_id", "type", "title"]],
         left_on="mal_id",
         right_on="mal_id",
         how="inner",
     ).merge(
-        details_subset,
+        details_df[["mal_id", "type", "title"]],
         left_on="recommendation_mal_id",
         right_on="mal_id",
         how="inner",

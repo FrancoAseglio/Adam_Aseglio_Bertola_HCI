@@ -63,12 +63,6 @@ def prepare_studio_data(details_df, stats_df, min_anime_threshold=5):
         Studio analysis data with columns:  Studio, Avg Score, Count
         Sorted by Count descending
     """
-    # Ensure mal_id has consistent dtype for merge
-    details_df = details_df.copy()
-    stats_df = stats_df.copy()
-    details_df["mal_id"] = details_df["mal_id"].astype("int64")
-    stats_df["mal_id"] = stats_df["mal_id"].astype("int64")
-    
     # Merge datasets
     df = details_df.merge(stats_df, on="mal_id", how="inner")
 
@@ -183,17 +177,6 @@ def prepare_episode_score_data(
     if labels is None:
         labels = ["Single", "2-12", "13-24", "25-50", "51-100", "100+"]
 
-    # Fix dtype compatibility issue for merge (Python 3.13 pandas bug)
-    # Convert mal_id to numpy int64 explicitly
-    details_df = details_df.copy()
-    stats_df = stats_df.copy()
-    
-    import numpy as np
-    if "mal_id" in details_df.columns:
-        details_df["mal_id"] = details_df["mal_id"].astype(np.int64)
-    if "mal_id" in stats_df.columns:
-        stats_df["mal_id"] = stats_df["mal_id"].astype(np.int64)
-
     # Merge datasets
     df = details_df.merge(stats_df, on="mal_id", how="inner")
 
@@ -219,31 +202,25 @@ def prepare_episode_score_data(
 
 
 def fill_missing_years(df):
-    """
-    Fill missing years for each genre to avoid line gaps using vectorized operations.
-    Creates a full Cartesian product (All Years x All Genres) and merges data.
-    """
-    # Create DataFrames for unique Years and Genres
-    all_years = pd.DataFrame({
-        "year": range(int(df["year"].min()), int(df["year"].max()) + 1)
-    })
-    all_genres = pd.DataFrame({
-        "genres_list": df["genres_list"].unique()
-    })
+    """Fill missing years for each genre to avoid line gaps."""
 
-    # Cross join for full grid
-    full_grid = all_years.merge(all_genres, how="cross")
+    all_years = range(int(df["year"].min()), int(df["year"].max()) + 1)
+    genres = df["genres_list"].unique()
 
-    # Merge with original data
-    filled_df = full_grid.merge(
-        df, on=["year", "genres_list"], how="left"
-    )
+    complete_data = []
+    for genre in genres:
+        genre_data = df[df["genres_list"] == genre]
+        full_index = pd.DataFrame({"year": list(all_years), "genres_list": genre})
+        genre_complete = full_index.merge(
+            genre_data, on=["year", "genres_list"], how="left"
+        )
+        genre_complete["popularity"] = genre_complete["popularity"].fillna(0)
+        genre_complete["anime_count"] = (
+            genre_complete["anime_count"].fillna(0).astype(int)
+        )
+        complete_data.append(genre_complete)
 
-    # Filling NaN with zeros for popularity and anime_count
-    filled_df["popularity"] = filled_df["popularity"].fillna(0)
-    filled_df["anime_count"] = filled_df["anime_count"].fillna(0).astype('int64')
-
-    return filled_df
+    return pd.concat(complete_data, ignore_index=True)
 
 
 # ------------------------------
@@ -269,13 +246,8 @@ def prepare_character_favorites(characters_df, favs_df):
     """
     char_favs = favs_df[favs_df["fav_type"] == "character"].copy()
     char_fav_counts = char_favs.groupby("id").size().reset_index(name="user_favs")
-    
-    # Ensure compatible dtypes for merge
-    char_fav_counts["id"] = char_fav_counts["id"].astype("int64")
-    characters_df_copy = characters_df.copy()
-    characters_df_copy["character_mal_id"] = characters_df_copy["character_mal_id"].astype("int64")
 
-    char_popularity = characters_df_copy.merge(
+    char_popularity = characters_df.merge(
         char_fav_counts, left_on="character_mal_id", right_on="id", how="left"
     )
     char_popularity["user_favs"] = char_popularity["user_favs"].fillna(0)
@@ -342,14 +314,8 @@ def prepare_engagement_data(
     if include_episodes:
         cols.append("episodes")
 
-    # Ensure mal_id has compatible dtypes for merge
-    details_subset = details_df[cols].copy()
-    stats_subset = stats_df[["mal_id", "watching", "completed", "on_hold", "dropped"]].copy()
-    details_subset["mal_id"] = details_subset["mal_id"].astype("int64")
-    stats_subset["mal_id"] = stats_subset["mal_id"].astype("int64")
-    
-    anime_engagement = details_subset.merge(
-        stats_subset,
+    anime_engagement = details_df[cols].merge(
+        stats_df[["mal_id", "watching", "completed", "on_hold", "dropped"]],
         on="mal_id",
         how="inner",
     )
@@ -433,41 +399,33 @@ def prepare_completion_drop_data(stats_df, min_members=100):
 def prepare_country_data(profiles_df):
     """
     Prepare geographic distribution data with country codes.
-    Uses pandas apply and list expansion for cleaner syntax.
+
+    Parameters
+    ----------
+    profiles_df : pd.DataFrame
+        User profiles with location data
+
+    Returns
+    -------
+    pd.DataFrame
+        Aggregated country-year statistics
     """
+
     profiles_df = profiles_df.copy()
-    
-    # Date Processing: Extract year from 'joined' column
     profiles_df["year_label"] = pd.to_datetime(
         profiles_df["joined"], errors="coerce"
     ).dt.year
-
-    # Country Mapping using apply
-    mapped_locations = profiles_df["location"].apply(
-        lambda x: get_country_code(x) or (None, None)
-    )
-    
-    # Transform to DataFrame for efficiency
-    loc_df = pd.DataFrame(
-        mapped_locations.tolist(), 
-        columns=["country", "country_code"], 
-        index=profiles_df.index
+    profiles_df[["country", "country_code"]] = profiles_df["location"].apply(
+        lambda x: pd.Series(get_country_code(x))
     )
 
-    # Coloumn Assignment
-    profiles_df["country"] = loc_df["country"]
-    profiles_df["country_code"] = loc_df["country_code"]
-
-    # Aggregation by country and year
     profiles_with_country = profiles_df[profiles_df["country_code"].notna()].copy()
-    
     country_year_counts = (
         profiles_with_country.groupby(["country", "country_code", "year_label"])
         .size()
         .reset_index(name="user_count")
     )
 
-    # Cumulative sum per country
     country_year_counts = country_year_counts.sort_values(["country", "year_label"])
     country_year_counts["cumulative_users"] = country_year_counts.groupby("country")[
         "user_count"
@@ -610,14 +568,9 @@ def prepare_persona_genre_data(active_users, favs_df, details_df, top_n=15):
         favs_df[favs_df["fav_type"] == "anime"], on="username", how="inner"
     )
 
-    # Ensure compatible dtypes for merge
-    user_favs["id"] = user_favs["id"].astype("int64")
-    details_subset = details_df[["mal_id", "genres"]].copy()
-    details_subset["mal_id"] = details_subset["mal_id"].astype("int64")
-    
     # Merge with details to get genres
     user_favs_genres = user_favs.merge(
-        details_subset, left_on="id", right_on="mal_id", how="left"
+        details_df[["mal_id", "genres"]], left_on="id", right_on="mal_id", how="left"
     )
 
     # Parse genres (vectorized)
