@@ -27,15 +27,21 @@ def recommendation_genre_cooccurrence(
 
     Parameters
     ----------
-    details_df :  pd.DataFrame
+    details_df : pd.DataFrame
+        Anime details with genres information
     recommendations_df : pd.DataFrame
+        Recommendation pairs between anime
     min_recommendations : int, default=250
+        Minimum number of recommendations to include a genre pair
     top_n : int, default=10
+        Number of top genres to display
     figsize : tuple, default=(1000, 800)
+        Figure size in pixels (width, height)
 
     Returns
     -------
     plotly.graph_objects.Figure
+        Interactive heatmap showing genre co-occurrence patterns
     """
     anime_genres = explode_genres(details_df[["mal_id", "title", "genres"]])
 
@@ -50,10 +56,13 @@ def recommendation_genre_cooccurrence(
     )
 
     rec_exploded = (
-        rec_with_genres.assign(source_genre=rec_with_genres["genres_list_source"])
-        .explode("source_genre")
-        .assign(target_genre=lambda df: df["genres_list_target"])
-        .explode("target_genre")
+        rec_with_genres
+        .explode("genres_list_source")
+        .explode("genres_list_target")
+        .rename(columns={
+            "genres_list_source": "source_genre",
+            "genres_list_target": "target_genre"
+        })
     )
 
     rec_exploded = rec_exploded[
@@ -111,11 +120,11 @@ def recommendation_genre_cooccurrence(
             y=heatmap_matrix.index,
             colorscale="YlOrRd",
             text=heatmap_matrix.values,
-            texttemplate="%{text: ,.0f}",
+            texttemplate="%{text:,.0f}",
             textfont={"size": 10},
             hovertemplate=(
                 "<b>%{y}</b> → <b>%{x}</b><br>"
-                "Recommendations: %{z: ,.0f}<br>"
+                "Recommendations: %{z:,.0f}<br>"
                 "<extra></extra>"
             ),
             colorbar=dict(title="Recommendation<br>Count"),

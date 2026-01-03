@@ -7,6 +7,7 @@ import warnings
 warnings.filterwarnings("ignore", category=UserWarning)
 from typing import List
 
+
 def save_to_csv(dataframe, save_path=None):
     """Save the comparison dataframe to CSV into given dir"""
     prefix = "anime_score_comparison"
@@ -48,10 +49,16 @@ def print_key_results(mean_distance_stats, mean_distance_ratings):
     print_section_header("KEY RESULTS")
     print(f"Mean distance (stats_df):    {mean_distance_stats:.6f}")
     print(f"Mean distance (ratings_df):  {mean_distance_ratings:.6f}")
-    print(f"Absolute difference:         {abs(mean_distance_stats - mean_distance_ratings):.6f}")
+    print(
+        f"Absolute difference:         {abs(mean_distance_stats - mean_distance_ratings):.6f}"
+    )
 
     winner = "stats_df" if mean_distance_stats < mean_distance_ratings else "ratings_df"
-    improvement = abs(mean_distance_stats - mean_distance_ratings) / max(mean_distance_stats, mean_distance_ratings) * 100
+    improvement = (
+        abs(mean_distance_stats - mean_distance_ratings)
+        / max(mean_distance_stats, mean_distance_ratings)
+        * 100
+    )
 
     print(f"Winner:                      {winner}")
     print(f"Improvement:                 {improvement:.2f}%")
@@ -59,15 +66,33 @@ def print_key_results(mean_distance_stats, mean_distance_ratings):
 
 
 def print_distribution_for_dataset(name, data, distance_col, labels, bins):
-    """Print distribution for a single dataset"""
+    """Print distribution for a single dataset."""
     print(f"{name}:")
-    dist = pd.cut(data[distance_col], bins=bins, labels=labels).value_counts().sort_index()
+    
+    s_labels = pd.Series(labels)
+    
+    dist = (
+        pd.cut(data[distance_col], bins=bins, labels=s_labels)
+        .value_counts()
+        .sort_index()
+        .reindex(s_labels, fill_value=0)
+    )
 
-    for label in labels:
-        count = dist.get(label, 0)
-        pct = (count / len(data) * 100) if len(data) > 0 else 0
-        bar = "█" * int(pct / 2)
-        print(f"  {label: >10}: {count:>6,} ({pct:>5.1f}%) {bar}")
+    total = len(data)
+    pcts = (dist / total * 100) if total > 0 else pd.Series(0.0, index=s_labels)
+
+    bar_counts = (pcts / 2).astype(int)
+    bars = pd.Series("█", index=s_labels.index).str.repeat(bar_counts)
+
+    fmt_labels = s_labels.str.rjust(10)
+    fmt_counts = dist.map('{:>6,}'.format)
+    fmt_pcts = pcts.map('({:>5.1f}%)'.format)
+
+    final_lines = (
+        "  " + fmt_labels + ": " + fmt_counts + " " + fmt_pcts + " " + bars
+    )
+
+    print(final_lines.str.cat(sep="\n"))
     print()
 
 
@@ -77,11 +102,17 @@ def print_distance_distribution(valid_stats, valid_ratings):
     labels = ["0-0.01", "0.01-0.05", "0.05-0.1", "0.1-0.5", "0.5-1.0", ">1.0"]
 
     print_section_header("DISTANCE DISTRIBUTION")
-    print_distribution_for_dataset("STATS_DF", valid_stats, "distance_stats", labels, bins)
-    print_distribution_for_dataset("RATINGS_DF", valid_ratings, "distance_ratings", labels, bins)
+    print_distribution_for_dataset(
+        "STATS_DF", valid_stats, "distance_stats", labels, bins
+    )
+    print_distribution_for_dataset(
+        "RATINGS_DF", valid_ratings, "distance_ratings", labels, bins
+    )
 
 
-def print_detailed_report(comparison, valid_stats, valid_ratings, mean_distance_stats, mean_distance_ratings):
+def print_detailed_report(
+    comparison, valid_stats, valid_ratings, mean_distance_stats, mean_distance_ratings
+):
     """Print comprehensive analysis report to console"""
     print_metadata(comparison, valid_stats, valid_ratings)
     print_key_results(mean_distance_stats, mean_distance_ratings)
@@ -116,13 +147,11 @@ def quick_profile(df: pd.DataFrame, name: str) -> None:
     print(f"{name.upper():^70}")
     print(f"{'='*70}")
 
-    # Shape + memory
     n_rows, n_cols = df.shape
     memory_mb = df.memory_usage(deep=True).sum() / 1024**2
     print(f"Shape: {n_rows:,} rows × {n_cols} columns")
     print(f"Memory usage: {memory_mb:.2f} MB")
 
-    # Missing values
     missing = df.isnull().sum()
     total_missing = missing.sum()
 
@@ -132,7 +161,6 @@ def quick_profile(df: pd.DataFrame, name: str) -> None:
     else:
         print("\nNo missing values!")
 
-    # Duplicates
     dupes = df.duplicated().sum()
     if dupes > 0:
         print(f"\nDuplicated Rows: {dupes}")
@@ -146,19 +174,16 @@ def quick_profile(df: pd.DataFrame, name: str) -> None:
 def downcast_df(df: pd.DataFrame, inplace: bool = False) -> pd.DataFrame:
     """
     Optimize a DataFrame by downcasting numeric types and converting columns.
-
     This function performs the following optimizations:
       - Downcasts integers and floats to smallest possible types
       - Converts object columns to datetime when >80% contain valid dates
       - Converts low-cardinality object columns (<50% unique) to category
-
     Parameters
     ----------
     df : pd.DataFrame
         Input DataFrame to optimize.
     inplace : bool, optional
         If True, modify df in place. If False, return a copy, by default False.
-
     Returns
     -------
     pd.DataFrame
@@ -166,38 +191,32 @@ def downcast_df(df: pd.DataFrame, inplace: bool = False) -> pd.DataFrame:
     """
     if not inplace:
         df = df.copy()
+    
+    int_cols = df.select_dtypes(include=['integer']).columns
+    df[int_cols] = df[int_cols].apply(pd.to_numeric, downcast="integer")
 
-    for col in df.columns:
-        col_type = df[col].dtype
-
-        # Integer downcast
-        if pd.api.types.is_integer_dtype(col_type):
-            df[col] = pd.to_numeric(df[col], downcast="integer")
-
-        # Float downcast
-        elif pd.api.types.is_float_dtype(col_type):
-            df[col] = pd.to_numeric(df[col], downcast="float")
-
-        # Handle object columns
-        elif col_type == "object":
-            # Skip if column is empty or all null
-            col_series = df[col]
-            if col_series.isna().sum() == len(df):
-                continue
-
-            # Attempt datetime conversion (only if column name suggests dates)
-            if any(
-                date_hint in col.lower()
-                for date_hint in ["date", "time", "timestamp", "dt"]
-            ):
-                converted = pd.to_datetime(col_series, errors="coerce")
-                valid_count = converted.notna().sum()
-                if valid_count / len(df) > 0.8:
-                    df[col] = converted
-                    continue
-
-            # Don't convert in other cases
-
+    float_cols = df.select_dtypes(include=['float']).columns
+    df[float_cols] = df[float_cols].apply(pd.to_numeric, downcast="float")
+    
+    object_cols = df.select_dtypes(include=['object']).columns
+    
+    non_empty_obj_cols = object_cols[df[object_cols].notna().any()]
+    
+    date_hints = ["date", "time", "timestamp", "dt"]
+    col_names_lower = pd.Series(non_empty_obj_cols).str.lower()
+    
+    pattern = '|'.join(map(re.escape, date_hints))
+    has_date_hint = col_names_lower.str.contains(pattern, case=False, na=False)
+    date_candidate_cols = non_empty_obj_cols[has_date_hint]
+    
+    if len(date_candidate_cols) > 0:
+        converted = df[date_candidate_cols].apply(pd.to_datetime, errors="coerce")
+        
+        valid_ratios = converted.notna().sum() / len(df)
+        cols_to_convert = valid_ratios[valid_ratios > 0.8].index
+        
+        df[cols_to_convert] = converted[cols_to_convert]
+    
     return df
 
 
@@ -221,12 +240,11 @@ def parse_list(s: str) -> List[str]:
     if pd.isna(s) or s == "[]" or not s:
         return []
 
-    # Find all quoted strings
     matches = re.findall(r'["\']([^"\']+)["\']', s)
     return matches
 
 
-def add_count_on_vertical_bars(ax, fmt='{:,.0f}', padding=5, fontsize=9) -> None:
+def add_count_on_vertical_bars(ax, fmt="{:,.0f}", padding=5, fontsize=9) -> None:
     """
     Add labels on top of VERTICAL bar chart bars using direct vectorization.
     Assumes a single data series (ax.containers[0]).
@@ -234,45 +252,46 @@ def add_count_on_vertical_bars(ax, fmt='{:,.0f}', padding=5, fontsize=9) -> None
     if not ax.containers:
         return
 
-    # Direct access to the first container
     container = ax.containers[0]
-    
-    # Vectorized labeling
+
     ax.bar_label(
-        container, 
-        fmt=fmt, 
-        padding=padding, 
-        fontsize=fontsize, 
-        fontweight='bold'
+        container, fmt=fmt, padding=padding, fontsize=fontsize, fontweight="bold"
     )
-    
-    # Calculate Y-axis limit using NumPy
+
     if len(container.datavalues) > 0:
         max_height = np.max(container.datavalues)
         ax.set_ylim(0, max_height * 1.20)
 
 
-def add_count_on_horizontal_bars(ax, fmt='{:,.0f}', padding=5, fontsize=10) -> None:
+def add_count_on_horizontal_bars(ax, custom_labels=None, fmt="{:,.0f}"):
     """
-    Add labels to the right of HORIZONTAL bar chart bars using direct vectorization.
-    Assumes a single data series (ax.containers[0]).
+    Adds labels to the end of horizontal bars in a Matplotlib axes.
+
+    If 'custom_labels' is provided, it uses those strings. Otherwise, it formats
+    the numerical values of the bars using the provided 'fmt' string.
+
+    Parameters
+    ----------
+    ax : matplotlib.axes.Axes
+        The axes object containing the horizontal bar plot.
+    custom_labels : array-like, optional
+        A list or array of strings to use as labels. If None, values are inferred 
+        from the bar lengths.
+    fmt : str, default="{:,.0f}"
+        The format string to apply to the values if custom_labels is None.
     """
-    if not ax.containers:
-        return
+    if custom_labels is None:
+        custom_labels = (
+            pd.Series(ax.containers[0].datavalues)
+            .map(fmt.format)
+            .values
+        )
 
-    # 1. Accesso diretto
-    container = ax.containers[0]
-
-    # 2. Etichettatura vettorizzata
     ax.bar_label(
-        container, 
-        fmt=fmt, 
-        padding=padding, 
-        fontsize=fontsize, 
-        fontweight='bold'
+        ax.containers[0],
+        labels=custom_labels,
+        padding=3,
+        fontsize=10,
+        fontweight="bold"
     )
-        
-    # 3. Calcolo del limite X usando NumPy
-    if len(container.datavalues) > 0:
-        max_width = np.max(container.datavalues)
-        ax.set_xlim(0, max_width * 1.15)
+

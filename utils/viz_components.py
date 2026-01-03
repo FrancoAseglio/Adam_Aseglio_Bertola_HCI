@@ -5,6 +5,7 @@ Visualization Components for Anime Analysis
 Reusable Plotly and Matplotlib visualization builders.
 """
 
+import pandas as pd
 import numpy as np
 import matplotlib.cm as cm
 import matplotlib.pyplot as plt
@@ -62,40 +63,52 @@ def create_grouped_bar_chart(
     Returns
     -------
     plotly.graph_objects.Figure
+        Interactive grouped bar chart
     """
     data = data.copy()
-
     if sort_by:
         data = data.sort_values(sort_by, ascending=ascending)
 
     fig = go.Figure()
 
-    for y_col, label, color in zip(y_cols, y_labels, colors):
-        hover_template = f"<b>%{{x}}</b><br>{label}: %{{y:.1f}}%<br>"
+    customdata = data[customdata_cols].values if customdata_cols else None
 
-        if customdata_cols:
-            customdata = data[customdata_cols].values
-            for i, col in enumerate(customdata_cols):
-                hover_template += f"{col}: %{{customdata[{i}]:,}}<br>"
-        else:
-            customdata = None
-
-        hover_template += "<extra></extra>"
-
-        fig.add_trace(
-            go.Bar(
-                x=data[x_col],
-                y=data[y_col],
-                name=label,
-                marker=dict(color=color),
-                text=data[y_col].apply(lambda x: f"{x:.1f}%"),
-                textposition="outside",
-                hovertemplate=hover_template,
-                customdata=customdata,
-            )
+    customdata_suffix = ""
+    if customdata_cols:
+        indices = pd.Series(range(len(customdata_cols)))
+        col_series = pd.Series(customdata_cols)
+        template_parts = (
+            col_series + ": %{customdata[" + indices.astype(str) + "]:,}<br>"
         )
+        customdata_suffix = template_parts.str.cat()
 
-    # Calculate y-axis range
+    trace_configs = pd.DataFrame({"y_col": y_cols, "label": y_labels, "color": colors})
+
+    trace_configs["hover_template"] = (
+        "<b>%{x}</b><br>"
+        + trace_configs["label"]
+        + ": %{y:.1f}%<br>"
+        + customdata_suffix
+        + "<extra></extra>"
+    )
+
+    traces = trace_configs.apply(
+        lambda row: go.Bar(
+            x=data[x_col],
+            y=data[row["y_col"]],
+            name=row["label"],
+            marker=dict(color=row["color"]),
+            text=data[row["y_col"]],
+            texttemplate='%{text:.1f}%',
+            textposition="outside",
+            hovertemplate=row["hover_template"],
+            customdata=customdata,
+        ),
+        axis=1,
+    )
+
+    fig.add_traces(traces.tolist())
+
     max_val = data[y_cols].max().max()
 
     fig.update_layout(
@@ -154,7 +167,7 @@ def create_horizontal_bar_chart(
         Chart title
     x_title : str
         X-axis label
-    y_title :  str
+    y_title : str
         Y-axis label
     figsize : tuple, default=(12, 8)
         Figure size (width, height)
@@ -170,8 +183,8 @@ def create_horizontal_bar_chart(
     Returns
     -------
     matplotlib.figure.Figure, matplotlib.axes.Axes
+        The figure and axes objects for further customization
     """
-    # Create figure only if ax not provided
     if ax is None:
         fig, ax = plt.subplots(figsize=figsize)
     else:
@@ -188,16 +201,15 @@ def create_horizontal_bar_chart(
     ax.set_title(title, fontsize=14, fontweight="bold", pad=20)
 
     if add_labels:
-        for i, (bar, value) in enumerate(zip(bars, data[x_col])):
-            # Format based on value size
-            if value >= 1000:
-                label = f" {int(value):,}"
-            else:
-                label = f" {value:. 1f}"
+        values = data[x_col].values
 
-            ax.text(
-                value, i, label, va="center", ha="left", fontsize=10, fontweight="bold"
-            )
+        s_vals = pd.Series(values)
+        labels = np.where(
+            values >= 1000,
+            s_vals.map('{:,.0f}'.format),
+            s_vals.map('{:.1f}'.format)
+        )
+        ax.bar_label(bars, labels=labels, padding=3, fontsize=10, fontweight="bold")
 
     if invert_y:
         ax.invert_yaxis()
@@ -206,7 +218,6 @@ def create_horizontal_bar_chart(
     ax.spines["right"].set_visible(False)
     ax.grid(axis="x", alpha=0.3, linestyle="--")
 
-    # Only call tight_layout if we created the figure
     if ax is None:
         plt.tight_layout()
 
@@ -245,60 +256,77 @@ def create_dual_bar_chart(
         Figure size (width, height)
     bar_label_formats : list of str, optional
         Format strings for bar labels [left_format, right_format]
-        e.g., ['{: ,.0f}', '{:. 2f}']
+        e.g., ['{:,.0f}', '{:.2f}']
     y_limits : list of tuple, optional
         Y-axis limits [(left_min, left_max), (right_min, right_max)]
 
     Returns
     -------
     matplotlib.figure.Figure, np.ndarray of matplotlib.axes.Axes
+        The figure and axes objects for further customization
     """
     fig, axes = plt.subplots(1, 2, figsize=figsize)
 
     if bar_label_formats is None:
-        bar_label_formats = ["{:,.0f}", "{:. 2f}"]
+        bar_label_formats = ["{:,.0f}", "{:.2f}"]
 
-    for idx, (ax, y_col, title, y_title, color, label_fmt) in enumerate(
-        zip(axes, y_cols, titles, y_titles, colors, bar_label_formats)
-    ):
-        # Create bars
+    plot_configs = pd.DataFrame(
+        {
+            "ax": axes,
+            "y_col": y_cols,
+            "title": titles,
+            "y_title": y_titles,
+            "color": colors,
+            "label_fmt": bar_label_formats,
+            "idx": [0, 1],
+        }
+    )
+
+    def plot_single_chart(config):
+        ax = config["ax"]
+        y_col = config["y_col"]
+
         ax.bar(
-            range(len(data)), data[y_col], color=color, edgecolor="none", linewidth=0
+            range(len(data)),
+            data[y_col],
+            color=config["color"],
+            edgecolor="none",
+            linewidth=0,
         )
 
-        # Set ticks and labels
         ax.set_xticks(range(len(data)))
         ax.set_xticklabels(data[x_col], rotation=45, ha="right")
-        ax.set_title(title, fontsize=12, fontweight="bold")
+
+        ax.set_title(config["title"], fontsize=12, fontweight="bold")
         ax.set_xlabel("Episode Range")
-        ax.set_ylabel(y_title)
+        ax.set_ylabel(config["y_title"])
+
         ax.grid(axis="y", linestyle="--", alpha=0.6)
         ax.spines["top"].set_visible(False)
         ax.spines["right"].set_visible(False)
 
-        # Add bar labels
-        for i, (bar, value) in enumerate(zip(ax.patches, data[y_col])):
-            ax.text(
-                bar.get_x() + bar.get_width() / 2.0,
-                bar.get_height(),
-                label_fmt.format(value),
-                ha="center",
-                va="bottom",
-                fontsize=9,
-                fontweight="bold",
-                color="black",
-            )
+        labels = pd.Series(data[y_col].values).map(config["label_fmt"].format).values
+        ax.bar_label(ax.containers[0], labels=labels, padding=3)
 
-        # Set y-axis limits
+        ax.bar_label(
+            ax.containers[0], 
+            labels=labels, 
+            padding=3,
+            fontsize=9,
+            fontweight="bold",
+            color="black"
+        )
+
+        idx = config["idx"]
         if y_limits and y_limits[idx]:
             ax.set_ylim(y_limits[idx])
         else:
-            # Auto-adjust with padding
             max_val = data[y_col].max()
             ax.set_ylim(0, max_val * 1.15)
 
-    plt.tight_layout()
+    plot_configs.apply(plot_single_chart, axis=1)
 
+    plt.tight_layout()
     return fig, axes
 
 
@@ -351,7 +379,6 @@ def create_hexbin_violin_plot(
     """
     fig, axes = plt.subplots(1, 2, figsize=figsize)
 
-    # Calculate correlation
     correlation = data[x_col].corr(data[y_col])
     abs_corr = abs(correlation)
 
@@ -362,7 +389,6 @@ def create_hexbin_violin_plot(
     else:
         interpretation = "Strong"
 
-    # Plot 1: Hexbin Density Heatmap
     hb = axes[0].hexbin(
         data[x_col],
         data[y_col],
@@ -382,10 +408,8 @@ def create_hexbin_violin_plot(
     axes[0].spines["top"].set_visible(False)
     axes[0].spines["right"].set_visible(False)
 
-    # Add colorbar
     cbar = fig.colorbar(hb, ax=axes[0], label="Concentration (Log Scale)")
 
-    # Plot 2: Violin Plot
     sns.violinplot(
         data=data,
         x=category_col,
@@ -407,7 +431,6 @@ def create_hexbin_violin_plot(
 
     plt.tight_layout()
 
-    # Correlation statistics
     correlation_stats = {
         "pearson_r": round(correlation, 4),
         "interpretation": interpretation,
@@ -456,7 +479,6 @@ def create_dual_line_distribution(
     -------
     plotly.graph_objects.Figure
     """
-    # Calculate histograms
     counts1, _ = np.histogram(data1.dropna(), bins=bins)
     counts2, _ = np.histogram(data2.dropna(), bins=bins)
 
@@ -464,7 +486,6 @@ def create_dual_line_distribution(
 
     fig = go.Figure()
 
-    # Add first trace
     fig.add_trace(
         go.Scatter(
             x=bin_centers,
@@ -479,7 +500,6 @@ def create_dual_line_distribution(
         )
     )
 
-    # Add second trace
     fig.add_trace(
         go.Scatter(
             x=bin_centers,
@@ -524,58 +544,64 @@ def create_dual_horizontal_bar_chart(
     x_cols,
     titles,
     x_titles,
-    colors,
+    colors=None,
     figsize=(16, 8),
     x_limits=None,
     colormap_left="viridis_r",
     colormap_right="plasma_r",
 ):
     """
-    Create side-by-side horizontal bar charts with different metrics.
+    Creates side-by-side horizontal bar charts to compare two different metrics.
+
+    This function generates a figure with two subplots, handling sorting, coloring
+    (either solid colors or gradients), and standard formatting (grid, spines, labels).
 
     Parameters
     ----------
     data_left : pd.DataFrame
-        Data for left chart (pre-sorted)
-    data_right : pd. DataFrame
-        Data for right chart (pre-sorted)
+        DataFrame containing data for the left chart.
+    data_right : pd.DataFrame
+        DataFrame containing data for the right chart.
     y_col : str
-        Column name for y-axis labels (should exist after reset_index)
+        The column name to use for the Y-axis labels (must exist in both DataFrames).
     x_cols : list of str
-        Column names for x-axis values [left_col, right_col]
+        A list containing two column names: [left_value_col, right_value_col].
     titles : list of str
-        Titles for each chart [left_title, right_title]
+        A list containing two titles: [left_chart_title, right_chart_title].
     x_titles : list of str
-        X-axis labels [left_label, right_label]
-    colors : list of str
-        Base colors [left_color, right_color]
+        A list containing two X-axis labels: [left_label, right_label].
+    colors : list of str, optional
+        A list of two color codes (e.g., ["blue", "red"]). If provided, these solid
+        colors are used for the left and right charts respectively. If None,
+        gradients are generated using the specified colormaps.
     figsize : tuple, default=(16, 8)
-        Figure size (width, height)
+        The dimensions of the figure (width, height).
     x_limits : list of tuple, optional
-        X-axis limits [(left_min, left_max), (right_min, right_max)]
+        A list of two tuples defining axis limits: [(min_left, max_left), (min_right, max_right)].
     colormap_left : str, default='viridis_r'
-        Colormap for left chart
+        The name of the matplotlib colormap for the left chart (used if colors is None).
     colormap_right : str, default='plasma_r'
-        Colormap for right chart
+        The name of the matplotlib colormap for the right chart (used if colors is None).
 
     Returns
     -------
-    matplotlib.figure.Figure, np.ndarray of matplotlib.axes.Axes
+    tuple
+        A tuple containing (matplotlib.figure.Figure, np.ndarray of matplotlib.axes.Axes).
     """
     fig, axes = plt.subplots(1, 2, figsize=figsize)
 
-    # Prepare data (sort for display)
     data_left_sorted = data_left.sort_values(x_cols[0], ascending=True)
     data_right_sorted = data_right.sort_values(x_cols[1], ascending=True)
 
-    # Get colormaps
-    cmap_left = getattr(cm, colormap_left)
-    cmap_right = getattr(cm, colormap_right)
+    if colors and len(colors) >= 2:
+        colors_left = colors[0]
+        colors_right = colors[1]
+    else:
+        cmap_left = getattr(cm, colormap_left)
+        cmap_right = getattr(cm, colormap_right)
+        colors_left = cmap_left(np.linspace(0.3, 0.9, len(data_left_sorted)))
+        colors_right = cmap_right(np.linspace(0.3, 0.9, len(data_right_sorted)))
 
-    colors_left = cmap_left(np.linspace(0.3, 0.9, len(data_left_sorted)))
-    colors_right = cmap_right(np.linspace(0.3, 0.9, len(data_right_sorted)))
-
-    # Left chart
     axes[0].barh(
         range(len(data_left_sorted)),
         data_left_sorted[x_cols[0]],
@@ -589,7 +615,6 @@ def create_dual_horizontal_bar_chart(
     axes[0].spines["top"].set_visible(False)
     axes[0].spines["right"].set_visible(False)
 
-    # Right chart
     axes[1].barh(
         range(len(data_right_sorted)),
         data_right_sorted[x_cols[1]],
@@ -603,7 +628,6 @@ def create_dual_horizontal_bar_chart(
     axes[1].spines["top"].set_visible(False)
     axes[1].spines["right"].set_visible(False)
 
-    # Apply x-axis limits if provided
     if x_limits:
         if x_limits[0]:
             axes[0].set_xlim(x_limits[0])
@@ -615,6 +639,23 @@ def create_dual_horizontal_bar_chart(
     return fig, axes
 
 
+def update_autotext(autotext, content, fontsize):
+    """
+    Updates the text content and font size of a Matplotlib text object.
+
+    This function acts as a helper within a map() call to avoid explicit 
+    for-loops or complex lambdas.
+
+    Parameters
+    ----------
+        autotext (matplotlib.text.Text): The text object to modify (e.g., a pie chart label).
+        content (str): The new string to display.
+        fontsize (int | float): The font size to apply.
+    """
+    autotext.set_text(content)
+    autotext.set_fontsize(fontsize)
+
+
 def create_ring_chart(
     data,
     value_col,
@@ -622,57 +663,89 @@ def create_ring_chart(
     title,
     figsize=(12, 8),
     center_text="Total",
-    percent_threshold=1
+    percent_threshold=1,
 ):
     """
     Simplified Ring Chart: White background and all-black text.
+
+    Parameters
+    ----------
+    data : pd.DataFrame
+        Data to visualize
+    value_col : str
+        Column containing values for ring segments
+    label_col : str
+        Column containing labels for ring segments
+    title : str
+        Chart title
+    figsize : tuple, default=(12, 8)
+        Figure size (width, height)
+    center_text : str, default="Total"
+        Text to display in center of ring
+    percent_threshold : float, default=1
+        Minimum percentage to display label (hide smaller segments)
+
+    Returns
+    -------
+    matplotlib.figure.Figure, matplotlib.axes.Axes
+        The figure and axes objects for further customization
     """
     data = data.sort_values(by=value_col, ascending=False).copy()
     values = data[value_col]
     labels = data[label_col]
     total_val = values.sum()
-    
-    modern_colors = ['#00d2ff', '#ff9f43', '#1dd1a1', '#ff6b6b', '#a29bfe']
-    
-    fig, ax = plt.subplots(figsize=figsize, facecolor='white') 
-    ax.set_facecolor('white')
-    
+
+    modern_colors = ["#00d2ff", "#ff9f43", "#1dd1a1", "#ff6b6b", "#a29bfe"]
+
+    fig, ax = plt.subplots(figsize=figsize, facecolor="white")
+    ax.set_facecolor("white")
+
     wedges, texts, autotexts = ax.pie(
         values,
-        autopct='%1.1f%%',
-        startangle=140, 
-        pctdistance=0.76, 
-        colors=modern_colors[:len(data)],
-        wedgeprops=dict(width=0.5, edgecolor='white', linewidth=2),
-        textprops={'weight': 'bold', 'color': 'black'} 
+        autopct="%1.1f%%",
+        startangle=140,
+        pctdistance=0.76,
+        colors=modern_colors[: len(data)],
+        wedgeprops=dict(width=0.5, edgecolor="white", linewidth=2),
+        textprops={"weight": "bold", "color": "black"},
     )
 
-    for i, p in enumerate(autotexts):
-        percentage = values.iloc[i] / total_val * 100
-        if percentage < percent_threshold:
-            p.set_text("")
-        elif percentage < 5:
-            p.set_fontsize(9)
-        else:
-            p.set_fontsize(11)
+    percentages = (values / total_val * 100).values
 
-    text_color = '#222222'
+    existing_text = pd.Series(percentages).map('{:.1f}%'.format).values
 
-    ax.text(0, 0, f"{center_text}\n{total_val:,.0f}", 
-            ha='center', va='center', fontsize=15, fontweight='bold', color=text_color)
+    text_content = np.where(percentages < percent_threshold, "", existing_text)
+    font_sizes = np.where(
+        percentages < percent_threshold, 11, np.where(percentages < 5, 9, 11)
+    )
 
-    ax.set_title(title, fontsize=22, fontweight='bold', pad=25, color=text_color)
+    list(map(update_autotext, autotexts, text_content, font_sizes))
+
+    text_color = "#222222"
+    ax.text(
+        0,
+        0,
+        f"{center_text}\n{total_val:,.0f}",
+        ha="center",
+        va="center",
+        fontsize=15,
+        fontweight="bold",
+        color=text_color,
+    )
+
+    ax.set_title(title, fontsize=22, fontweight="bold", pad=25, color=text_color)
 
     leg = ax.legend(
-        wedges, labels,
+        wedges,
+        labels,
         title="Status",
         loc="center left",
         bbox_to_anchor=(1.1, 0.5),
         frameon=False,
         fontsize=13,
-        labelcolor=text_color
+        labelcolor=text_color,
     )
-    leg.get_title().set_fontweight('bold')
+    leg.get_title().set_fontweight("bold")
     leg.get_title().set_color(text_color)
 
     plt.tight_layout()
@@ -729,4 +802,3 @@ def create_heatmap(
     plt.tight_layout()
 
     return fig, ax
-
