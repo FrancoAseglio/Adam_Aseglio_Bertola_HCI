@@ -23,118 +23,6 @@ from .data_prep import (
 )
 
 
-def completion_dropout_by_type(
-    details_df, stats_df, min_users=100, figsize=(1400, 600)
-):
-    """
-    Analyze completion and dropout rates by anime type.
-
-    Parameters
-    ----------
-    details_df : pd.DataFrame
-    stats_df : pd.DataFrame
-    min_users : int, default=100
-    figsize : tuple, default=(1400, 600)
-
-    Returns
-    -------
-    plotly.graph_objects.Figure
-    """
-    data = prepare_engagement_data(details_df, stats_df, min_users=min_users)
-
-    stats = aggregate_by_dimension(
-        data,
-        groupby_col="type",
-        agg_cols={
-            "completion_rate": "mean",
-            "dropout_rate": "mean",
-            "mal_id": "count",
-            "started_users": "sum",
-        },
-    )
-
-    stats.columns = [
-        "Type",
-        "Avg Completion Rate",
-        "Avg Dropout Rate",
-        "Anime Count",
-        "Total Started Users",
-    ]
-
-    return create_grouped_bar_chart(
-        data=stats,
-        x_col="Type",
-        y_cols=["Avg Completion Rate", "Avg Dropout Rate"],
-        y_labels=["Completion Rate", "Dropout Rate"],
-        colors=["#4ECDC4", "#FF6B6B"],
-        title="Completion vs Dropout Rate by Anime Type<br><sub>How does format affect user engagement?</sub>",
-        x_title="Anime Type",
-        y_title="Rate (%)",
-        figsize=figsize,
-        sort_by="Avg Completion Rate",
-        ascending=False,
-        customdata_cols=["Anime Count", "Total Started Users"],
-    )
-
-
-def completion_dropout_by_genre(
-    details_df, stats_df, top_n=10, min_users=100, figsize=(1400, 700)
-):
-    """
-    Analyze completion and dropout rates by top anime genres.
-
-    Parameters
-    ----------
-    details_df : pd.DataFrame
-    stats_df : pd.DataFrame
-    top_n : int, default=10
-    min_users : int, default=100
-    figsize : tuple, default=(1400, 700)
-
-    Returns
-    -------
-    plotly.graph_objects.Figure
-    """
-    data = prepare_engagement_data(details_df, stats_df, min_users=min_users)
-    data = explode_genres(data)
-
-    stats = aggregate_by_dimension(
-        data,
-        groupby_col="genres_list",
-        agg_cols={
-            "completion_rate": "mean",
-            "dropout_rate": "mean",
-            "mal_id": "count",
-            "started_users": "sum",
-        },
-    )
-
-    stats.columns = [
-        "Genre",
-        "Avg Completion Rate",
-        "Avg Dropout Rate",
-        "Anime Count",
-        "Total Started Users",
-    ]
-    stats = stats.nlargest(top_n, "Anime Count")
-
-    return create_grouped_bar_chart(
-        data=stats,
-        x_col="Genre",
-        y_cols=["Avg Completion Rate", "Avg Dropout Rate"],
-        y_labels=["Completion Rate", "Dropout Rate"],
-        colors=["#4ECDC4", "#FF6B6B"],
-        title=f"Completion vs Dropout Rate by Top {top_n} Genres<br><sub>How does genre affect user engagement?</sub>",
-        x_title="Genre",
-        y_title="Rate (%)",
-        figsize=figsize,
-        sort_by="Avg Completion Rate",
-        ascending=False,
-        customdata_cols=["Anime Count", "Total Started Users"],
-        tickangle=-45,
-    )
-
-
 def completion_dropout_by_episode_count(
     details_df, stats_df, min_users=100, figsize=(1400, 700)
 ):
@@ -245,6 +133,119 @@ def completion_dropout_by_episode_count(
         yaxis=dict(range=[0, max_val * 1.15]),
     )
     return fig
+
+
+
+def completion_dropout_by_type(
+    details_df, stats_df, min_users=100, figsize=(1400, 600)
+):
+    """
+    Analyze completion and dropout rates by anime type.
+
+    Parameters
+    ----------
+    details_df : pd.DataFrame
+    stats_df : pd.DataFrame
+    min_users : int, default=100
+    figsize : tuple, default=(1400, 600)
+
+    Returns
+    -------
+    plotly.graph_objects.Figure
+    """
+    data = prepare_engagement_data(details_df, stats_df, min_users=min_users)
+
+    stats = aggregate_by_dimension(
+        data,
+        groupby_col="type",
+        agg_cols={
+            "completion_rate": "mean",
+            "dropout_rate": "mean",
+            "mal_id": "count",
+            "started_users": "sum",
+        },
+    )
+
+    stats.columns = [
+        "Type",
+        "Avg Completion Rate",
+        "Avg Dropout Rate",
+        "Anime Count",
+        "Total Started Users",
+    ]
+
+    return create_grouped_bar_chart(
+        data=stats,
+        x_col="Type",
+        y_cols=["Avg Completion Rate", "Avg Dropout Rate"],
+        y_labels=["Completion Rate", "Dropout Rate"],
+        colors=["#4ECDC4", "#FF6B6B"],
+        title="Completion vs Dropout Rate by Anime Type<br><sub>How does format affect user engagement?</sub>",
+        x_title="Anime Type",
+        y_title="Rate (%)",
+        figsize=figsize,
+        sort_by="Avg Completion Rate",
+        ascending=False,
+        customdata_cols=["Anime Count", "Total Started Users"],
+    )
+
+
+def completion_dropout_by_genre(
+    details_df, stats_df, top_n=10, min_users=100, figsize=(1400, 700)
+):
+    """
+    Analyze completion and dropout rates by top anime genres.
+
+    Parameters
+    ----------
+    details_df : pd.DataFrame
+    stats_df : pd.DataFrame
+    top_n : int, default=10
+    min_users : int, default=100
+    figsize : tuple, default=(1400, 700)
+
+    Returns
+    -------
+    plotly.graph_objects.Figure
+    """
+    data = prepare_engagement_data(details_df, stats_df, min_users=min_users)
+    data = explode_genres(data)
+
+    stats = aggregate_by_dimension(
+        data,
+        groupby_col="genres_list",
+        agg_cols={
+            "completion_rate": "mean",
+            "dropout_rate": "mean",
+            "mal_id": "count",
+            "started_users": "sum",
+        },
+    )
+
+    stats.columns = [
+        "Genre",
+        "Avg Completion Rate",
+        "Avg Dropout Rate",
+        "Anime Count",
+        "Total Started Users",
+    ]
+    stats = stats.nlargest(top_n, "Anime Count")
+
+    return create_grouped_bar_chart(
+        data=stats,
+        x_col="Genre",
+        y_cols=["Avg Completion Rate", "Avg Dropout Rate"],
+        y_labels=["Completion Rate", "Dropout Rate"],
+        colors=["#4ECDC4", "#FF6B6B"],
+        title=f"Completion vs Dropout Rate by Top {top_n} Genres<br><sub>How does genre affect user engagement?</sub>",
+        x_title="Genre",
+        y_title="Rate (%)",
+        figsize=figsize,
+        sort_by="Avg Completion Rate",
+        ascending=False,
+        customdata_cols=["Anime Count", "Total Started Users"],
+        tickangle=-45,
+    )
 
 
 def completion_dropout_distribution(

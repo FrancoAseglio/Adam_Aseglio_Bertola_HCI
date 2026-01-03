@@ -102,7 +102,7 @@ def clear_cache():
 # ========================================
 
 
-def studio_performance_analysis(min_anime_threshold=5, top_n=10, figsize=(16, 8)):
+def studio_performance_analysis(min_anime_threshold=0, top_n=10, figsize=(16, 8)):
     """
     Analyze anime studios by productivity and quality.
 
@@ -112,7 +112,7 @@ def studio_performance_analysis(min_anime_threshold=5, top_n=10, figsize=(16, 8)
 
     Parameters
     ----------
-    min_anime_threshold :  int, default=5
+    min_anime_threshold :  int, default=0
         Minimum number of anime for a studio to be included
     top_n :  int, default=10
         Number of top studios to display in each chart
@@ -265,7 +265,7 @@ def genre_evolution_over_time(
 # ========================================
 
 
-def voice_actor_character_popularity(top_n=10, figsize=(16, 8)):
+def voice_actor_character_popularity(top_n=10, character_threshold=0, figsize=(16, 8)):
     """
     Analyze the correlation between voice actors and character popularity.
 
@@ -273,6 +273,8 @@ def voice_actor_character_popularity(top_n=10, figsize=(16, 8)):
     ----------
     top_n : int, default=10
         Number of top voice actors to display
+    character_threshold : int, default=0
+        Minimum number of characters required for a voice actor to be included.
     figsize : tuple, default=(16, 8)
         Matplotlib figure size
 
@@ -288,6 +290,7 @@ def voice_actor_character_popularity(top_n=10, figsize=(16, 8)):
         data["person_voice_works_df"],
         data["person_details_df"],
         top_n=top_n,
+        character_threshold=character_threshold,
         figsize=figsize,
     )
 
@@ -544,7 +547,7 @@ def viewing_status_distribution():
     return fig, ax
 
 
-def genre_preferences_by_persona(_top_n):
+def genre_preferences_by_persona(top_n):
     """
     Analyze and visualize genre preferences by fan persona.
 
@@ -571,7 +574,7 @@ def genre_preferences_by_persona(_top_n):
         data["favs_df"],
         data["details_df"],
         min_anime=10,
-        top_n=_top_n,
+        top_n=top_n,
         figsize=(10, 8),
     )
 

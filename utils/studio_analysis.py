@@ -11,7 +11,7 @@ from .viz_components import create_dual_horizontal_bar_chart
 
 
 def studio_performance_analysis(
-    details_df, stats_df, min_anime_threshold=5, top_n=10, figsize=(16, 8)
+    details_df, stats_df, min_anime_threshold=0, top_n=10, figsize=(16, 8)
 ):
     """
     Analyze anime studios by productivity and quality.
