@@ -37,7 +37,6 @@ def anime_episode_range_analysis(
     fig : matplotlib.figure.Figure
     axes : np.ndarray of matplotlib.axes. Axes
     """
-    # Set defaults for wider range
     if bins is None:
         bins = [0, 1, 12, 24, 50, 100, 5000]
 
@@ -51,16 +50,14 @@ def anime_episode_range_analysis(
             "100+ eps",
         ]
 
-    # Prepare data (with wider max_episodes for distribution view)
     df = prepare_episode_score_data(
         details_df,
         stats_df,
-        max_episodes=5000,  # Include all anime
+        max_episodes=5000,
         bins=bins,
         labels=labels,
     )
 
-    # Aggregate by episode category
     stats = aggregate_by_dimension(
         df,
         groupby_col="episode_category",
@@ -69,7 +66,6 @@ def anime_episode_range_analysis(
 
     stats.columns = ["episode_category", "avg_score", "anime_count"]
 
-    # Create visualization
     fig, axes = create_dual_bar_chart(
         data=stats,
         x_col="episode_category",
@@ -120,19 +116,16 @@ def episode_score_correlation_analysis(
     correlation_stats : dict
         Contains 'pearson_r', 'interpretation', 'n_samples'
     """
-    # Set defaults
     if bins is None:
         bins = [0, 1, 12, 24, 50, 100, 500]
 
     if labels is None:
         labels = ["Single", "2-12", "13-24", "25-50", "51-100", "100+"]
 
-    # Prepare data with episode filtering
     df = prepare_episode_score_data(
         details_df, stats_df, max_episodes=max_episodes, bins=bins, labels=labels
     )
 
-    # Create visualization with correlation stats
     fig, axes, correlation_stats = create_hexbin_violin_plot(
         data=df,
         x_col="episodes",

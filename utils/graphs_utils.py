@@ -69,16 +69,6 @@ def _load_data():
 
     FILE_EXTENSION = ".csv"
 
-    # dtypes optimized for ratings dataset to save memory and make it loadable for everyone
-    rating_dtypes = {
-        'username': 'object',
-        'anime_id': 'int32',
-        'status': 'category',
-        'score': 'int8',
-        'is_rewatching': 'float32',
-        'num_watched_episodes': 'int32'
-    }
-
     _DATA_CACHE["character_anime_works_df"] = downcast_df(pd.read_csv(INPUT_DIR_PATH / f"character_anime_works_clean{FILE_EXTENSION}"))
     _DATA_CACHE["character_nicknames_df"] =downcast_df(pd.read_csv(INPUT_DIR_PATH / f"character_nicknames_clean{FILE_EXTENSION}"))
     _DATA_CACHE["characters_df"] = downcast_df(pd.read_csv(INPUT_DIR_PATH / f"characters_clean{FILE_EXTENSION}"))
@@ -275,6 +265,33 @@ def genre_evolution_over_time(
 # ========================================
 
 
+def voice_actor_character_popularity(top_n=10, figsize=(16, 8)):
+    """
+    Analyze the correlation between voice actors and character popularity.
+
+    Parameters
+    ----------
+    top_n : int, default=10
+        Number of top voice actors to display
+    figsize : tuple, default=(16, 8)
+        Matplotlib figure size
+
+    Returns
+    -------
+    fig, axes : matplotlib Figure and Axes
+    """
+    data = _load_data()
+
+    return _va_popularity(
+        data["characters_df"],
+        data["favs_df"],
+        data["person_voice_works_df"],
+        data["person_details_df"],
+        top_n=top_n,
+        figsize=figsize,
+    )
+
+
 def character_popularity_by_role(figsize=(14, 5)):
     """
     Analyze and visualize character popularity based on their role in anime.
@@ -325,33 +342,6 @@ def character_popularity_by_genre_bars(
         data["character_anime_works_df"],
         data["details_df"],
         min_char_count=min_char_count,
-        top_n=top_n,
-        figsize=figsize,
-    )
-
-
-def voice_actor_character_popularity(top_n=10, figsize=(16, 8)):
-    """
-    Analyze the correlation between voice actors and character popularity.
-
-    Parameters
-    ----------
-    top_n : int, default=10
-        Number of top voice actors to display
-    figsize : tuple, default=(16, 8)
-        Matplotlib figure size
-
-    Returns
-    -------
-    fig, axes : matplotlib Figure and Axes
-    """
-    data = _load_data()
-
-    return _va_popularity(
-        data["characters_df"],
-        data["favs_df"],
-        data["person_voice_works_df"],
-        data["person_details_df"],
         top_n=top_n,
         figsize=figsize,
     )
@@ -554,7 +544,7 @@ def viewing_status_distribution():
     return fig, ax
 
 
-def genre_preferences_by_persona(top_n):
+def genre_preferences_by_persona(_top_n):
     """
     Analyze and visualize genre preferences by fan persona.
 
@@ -581,9 +571,8 @@ def genre_preferences_by_persona(top_n):
         data["favs_df"],
         data["details_df"],
         min_anime=10,
-        top_n=top_n,
+        top_n=_top_n,
         figsize=(10, 8),
     )
 
     return fig, ax
-
