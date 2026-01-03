@@ -42,12 +42,8 @@ def genre_comparison_watched_vs_liked(
     fig :  matplotlib. figure.Figure
     axes : np.ndarray of matplotlib.axes.Axes
     """
-    # Create figure with 2 subplots
     fig, axes = plt.subplots(1, 2, figsize=figsize)
 
-    # ========================================
-    # LEFT:  Most Watched Genres
-    # ========================================
     merged_watched = details_df.merge(
         stats_df[["mal_id", "watching", "completed", "on_hold", "dropped"]],
         on="mal_id",
@@ -81,7 +77,6 @@ def genre_comparison_watched_vs_liked(
         ax=axes[0],
     )
 
-    # RIGHT: Most Liked Genres
     anime_favs = favs_df[favs_df["fav_type"] == "anime"].copy()
     merged_liked = anime_favs.merge(
         details_df, left_on="id", right_on="mal_id", how="inner"
@@ -125,7 +120,7 @@ def genre_evolution_over_time(
     ----------
     details_df : pd.DataFrame
         Anime details with genres and year/aired dates
-    stats_df : pd. DataFrame
+    stats_df : pd.DataFrame
         User statistics with watching, completed, dropped, on_hold data
     top_n : int, default=10
         Number of top genres to display
@@ -140,20 +135,16 @@ def genre_evolution_over_time(
     -------
     plotly.graph_objects.Figure
     """
-
-    # Prepare data
     data = details_df.merge(
         stats_df[["mal_id", "watching", "completed", "on_hold", "dropped"]],
         on="mal_id",
         how="inner",
     )
 
-    # Calculate total engagement (started users)
     data["started_users"] = (
         data["watching"] + data["completed"] + data["on_hold"] + data["dropped"]
     )
 
-    # Extract year
     if "year" not in data.columns:
         if "aired" not in data.columns:
             raise ValueError("Dataset must have 'year' or 'aired' column")
@@ -161,15 +152,12 @@ def genre_evolution_over_time(
             data["aired"].str.split(" to ").str[0], errors="coerce"
         ).dt.year
 
-    # Filter and clean
     data = data[data["year"].notna() & data["genres"].notna()].copy()
 
     if year_range:
         data = data[(data["year"] >= year_range[0]) & (data["year"] <= year_range[1])]
 
-    # Explode genres and aggregate popularity
     data_exploded = explode_genres(data)
-
     genre_year_stats = (
         data_exploded.groupby(["genres_list", "year"])
         .agg({"started_users": "sum", "mal_id": "count"})
@@ -177,16 +165,18 @@ def genre_evolution_over_time(
         .rename(columns={"started_users": "popularity", "mal_id": "anime_count"})
     )
 
-    # Fill missing years to avoid line gaps
     genre_year_stats = fill_missing_years(genre_year_stats)
 
-    # Apply smoothing if requested
-    if smooth:
-        genre_year_stats["popularity"] = genre_year_stats.groupby("genres_list")[
-            "popularity"
-        ].transform(lambda x: x.rolling(window=3, center=True, min_periods=1).mean())
+    genre_year_stats = genre_year_stats.sort_values(["genres_list", "year"])
 
-    # Select top N genres by total popularity
+    if smooth:
+        genre_year_stats["popularity"] = (
+            genre_year_stats.groupby("genres_list")["popularity"]
+            .rolling(window=3, center=True, min_periods=1)
+            .mean()
+            .droplevel(0)
+        )
+
     top_genres = (
         genre_year_stats.groupby("genres_list")["popularity"]
         .sum()
@@ -196,38 +186,38 @@ def genre_evolution_over_time(
 
     genre_year_stats = genre_year_stats[
         genre_year_stats["genres_list"].isin(top_genres)
-    ].sort_values(["genres_list", "year"])
+    ]
 
-    # Create visualization
     colors = px.colors.qualitative.Plotly + px.colors.qualitative.Set2
-    color_map = {genre: colors[i % len(colors)] for i, genre in enumerate(top_genres)}
+    top_genres_series = pd.Series(top_genres)
+    color_indices = pd.RangeIndex(len(top_genres)) % len(colors)
+    color_map = dict(
+        zip(top_genres_series, pd.Series(colors).iloc[color_indices].values)
+    )
 
     fig = go.Figure()
 
-    # Add line for each genre
-    for genre in top_genres:
-        genre_data = genre_year_stats[genre_year_stats["genres_list"] == genre]
-
-        fig.add_trace(
-            go.Scatter(
-                x=genre_data["year"],
-                y=genre_data["popularity"],
-                mode="lines+markers",
-                name=genre,
-                line=dict(color=color_map[genre], width=2.5),
-                marker=dict(size=5, line=dict(width=0.5, color="white")),
-                customdata=genre_data[["anime_count"]].values,
-                hovertemplate=(
-                    f"<b>{genre}</b><br>"
-                    "Year: %{x}<br>"
-                    "Total Engaged Users: %{y:,.0f}<br>"
-                    "Anime Count: %{customdata[0]:,}<br>"
-                    "<extra></extra>"
-                ),
-            )
+    traces = genre_year_stats.groupby("genres_list").apply(
+        lambda genre_data: go.Scatter(
+            x=genre_data["year"],
+            y=genre_data["popularity"],
+            mode="lines+markers",
+            name=genre_data.name,
+            line=dict(color=color_map[genre_data.name], width=2.5),
+            marker=dict(size=5, line=dict(width=0.5, color="white")),
+            customdata=genre_data[["anime_count"]].values,
+            hovertemplate=(
+                f"<b>{genre_data.name}</b><br>"
+                "Year: %{x}<br>"
+                "Total Engaged Users: %{y:,.0f}<br>"
+                "Anime Count: %{customdata[0]:,}<br>"
+                "<extra></extra>"
+            ),
         )
+    )
 
-    # Layout
+    fig.add_traces(traces.tolist())
+
     fig.update_layout(
         title=f"Genre Popularity Evolution Over Time<br>"
         f"<sub>Top {top_n} genres by total engaged users",
@@ -252,5 +242,4 @@ def genre_evolution_over_time(
         xaxis=dict(gridcolor="#E5E5E5", showgrid=True, dtick=5),
         yaxis=dict(gridcolor="#E5E5E5", showgrid=True),
     )
-
     return fig

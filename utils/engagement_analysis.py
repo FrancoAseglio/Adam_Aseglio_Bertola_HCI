@@ -6,6 +6,7 @@ Completion, dropout, and user engagement analysis by various dimensions.
 """
 
 import numpy as np
+import pandas as pd
 import plotly.graph_objects as go
 
 from .viz_components import (
@@ -155,7 +156,6 @@ def completion_dropout_by_episode_count(
         details_df, stats_df, min_users=min_users, include_episodes=True
     )
     data = bin_episodes(data)
-
     stats = aggregate_by_dimension(
         data,
         groupby_col="episode_category",
@@ -166,7 +166,6 @@ def completion_dropout_by_episode_count(
             "started_users": "sum",
         },
     )
-
     stats.columns = [
         "Category",
         "Avg Completion Rate",
@@ -174,18 +173,14 @@ def completion_dropout_by_episode_count(
         "Anime Count",
         "Total Started Users",
     ]
-
-    # Add in-progress rate calculation
     data_agg = (
         data.groupby("episode_category", observed=True)
         .agg({"watching": "sum", "on_hold": "sum", "started_users": "sum"})
         .reset_index()
     )
-
     data_agg["Avg In-Progress Rate"] = (
         (data_agg["watching"] + data_agg["on_hold"]) / data_agg["started_users"] * 100
     )
-
     stats = stats.merge(
         data_agg[["episode_category", "Avg In-Progress Rate"]],
         left_on="Category",
@@ -194,45 +189,48 @@ def completion_dropout_by_episode_count(
     )
     stats = stats.drop(columns=["episode_category"])
 
-    # Create figure with 3 bars
     fig = go.Figure()
-
     colors = {
         "Completion Rate": "#4ECDC4",
         "Dropout Rate": "#FF6B6B",
         "In-Progress/On-Hold": "#FFA500",
     }
 
-    for col, label in [
-        ("Avg Completion Rate", "Completion Rate"),
-        ("Avg Dropout Rate", "Dropout Rate"),
-        ("Avg In-Progress Rate", "In-Progress/On-Hold"),
-    ]:
-        fig.add_trace(
-            go.Bar(
-                x=stats["Category"],
-                y=stats[col],
-                name=label,
-                marker=dict(color=colors[label]),
-                text=stats[col].apply(lambda x: f"{x:.1f}%"),
-                textposition="outside",
-                hovertemplate=(
-                    "<b>%{x}</b><br>"
-                    + f"{label}: %{{y:.1f}}%<br>"
-                    + "Anime Count: %{customdata[0]:,}<br>"
-                    + "Total Started: %{customdata[1]:,}<br>"
-                    + "<extra></extra>"
-                ),
-                customdata=stats[["Anime Count", "Total Started Users"]].values,
-            )
-        )
+    trace_configs = pd.DataFrame(
+        {
+            "col": ["Avg Completion Rate", "Avg Dropout Rate", "Avg In-Progress Rate"],
+            "label": ["Completion Rate", "Dropout Rate", "In-Progress/On-Hold"],
+        }
+    )
+
+    traces = trace_configs.apply(
+        lambda row: go.Bar(
+            x=stats["Category"],
+            y=stats[row["col"]],
+            name=row["label"],
+            marker=dict(color=colors[row["label"]]),
+            text=stats[row["col"]],
+            texttemplate='%{text:.1f}%',
+            textposition="outside",
+            hovertemplate=(
+                "<b>%{x}</b><br>"
+                + f"{row['label']}: %{{y:.1f}}%<br>"
+                + "Anime Count: %{customdata[0]:,}<br>"
+                + "Total Started: %{customdata[1]:,}<br>"
+                + "<extra></extra>"
+            ),
+            customdata=stats[["Anime Count", "Total Started Users"]].values,
+        ),
+        axis=1,
+    )
+
+    fig.add_traces(traces.tolist())
 
     max_val = (
         stats[["Avg Completion Rate", "Avg Dropout Rate", "Avg In-Progress Rate"]]
         .max()
         .max()
     )
-
     fig.update_layout(
         title="Completion vs Dropout vs In-Progress Rate by Episode Count<br>"
         "<sub>Does anime length affect user commitment?</sub>",
@@ -246,7 +244,6 @@ def completion_dropout_by_episode_count(
         font=dict(size=12),
         yaxis=dict(range=[0, max_val * 1.15]),
     )
-
     return fig
 
 
@@ -275,13 +272,10 @@ def completion_dropout_distribution(
     fig : plotly.graph_objects. Figure
         Interactive distribution plot
     """
-    # Prepare data
     stats_filtered = prepare_completion_drop_data(stats_df, min_members=min_members)
 
-    # Create bins
     bins = np.arange(0, 101, bin_size)
 
-    # Create visualization
     fig = create_dual_line_distribution(
         data1=stats_filtered["completion_rate"],
         data2=stats_filtered["drop_rate"],

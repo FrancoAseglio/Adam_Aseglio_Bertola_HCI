@@ -5,9 +5,7 @@ Character Analysis Functions
 Character popularity and voice actor analysis.
 """
 
-# import numpy as np
 import matplotlib.pyplot as plt
-# import matplotlib.cm as cm
 import plotly.graph_objects as go
 
 from .data_prep import prepare_character_favorites, explode_genres
@@ -40,7 +38,7 @@ def voice_actor_character_popularity(
     top_n : int, default=10
         The number of top performers to display in each subplot.
     character_threshold : int, default=50
-        Minimum number of characters a VA must have voiced to be included. 
+        Minimum number of characters a VA must have voiced to be included.
     figsize : tuple, default=(16, 8)
         The dimensions of the resulting matplotlib figure.
 
@@ -49,7 +47,6 @@ def voice_actor_character_popularity(
     matplotlib.figure.Figure, np.ndarray
         The figure object and an array of the two subplots (axes).
     """
-    # Data Preparation
     char_data = prepare_character_favorites(characters_df, favs_df)
 
     voice_char = person_voice_works_df.merge(
@@ -71,14 +68,11 @@ def voice_actor_character_popularity(
         person_details_df[["person_mal_id", "name"]], on="person_mal_id", how="left"
     )
 
-    # Filter for minimum relevance
     va_stats = va_stats[va_stats["num_characters"] >= character_threshold]
 
-    # Create ranked subsets
     top_by_total = va_stats.nlargest(top_n, "total_character_favs")
     top_by_avg = va_stats.nlargest(top_n, "avg_character_favs")
 
-    # Visualization
     fig, axes = create_dual_horizontal_bar_chart(
         data_left=top_by_total,
         data_right=top_by_avg,
@@ -101,7 +95,9 @@ def voice_actor_character_popularity(
     return fig, axes
 
 
-def character_popularity_by_role(characters_df, favs_df, character_anime_works_df, figsize=(14, 5)):
+def character_popularity_by_role(
+    characters_df, favs_df, character_anime_works_df, figsize=(14, 5)
+):
     """
     Analyze and visualize character popularity based on their role in anime.
 
@@ -118,7 +114,9 @@ def character_popularity_by_role(characters_df, favs_df, character_anime_works_d
     """
     char_data = prepare_character_favorites(characters_df, favs_df)
 
-    char_roles = character_anime_works_df.merge(char_data, on="character_mal_id", how="inner")
+    char_roles = character_anime_works_df.merge(
+        char_data, on="character_mal_id", how="inner"
+    )
 
     role_analysis = (
         char_roles.groupby("role")
@@ -130,7 +128,6 @@ def character_popularity_by_role(characters_df, favs_df, character_anime_works_d
 
     fig, axes = plt.subplots(1, 2, figsize=figsize)
 
-    # Count per role
     role_analysis["Count"].plot(kind="bar", ax=axes[0], color=["#FF6B6B", "#4ECDC4"])
     axes[0].set_title("Characters Count by Role", fontsize=12, fontweight="bold")
     axes[0].set_ylabel("Character Count")
@@ -139,9 +136,12 @@ def character_popularity_by_role(characters_df, favs_df, character_anime_works_d
     axes[0].grid(axis="y", alpha=0.5, linestyle="--")
     add_count_on_vertical_bars(axes[0])
 
-    # Average favorites
-    role_analysis["Avg Favorites"].plot(kind="bar", ax=axes[1], color=["#FF6B6B", "#4ECDC4"])
-    axes[1].set_title("Average Favorites by Character Role", fontsize=12, fontweight="bold")
+    role_analysis["Avg Favorites"].plot(
+        kind="bar", ax=axes[1], color=["#FF6B6B", "#4ECDC4"]
+    )
+    axes[1].set_title(
+        "Average Favorites by Character Role", fontsize=12, fontweight="bold"
+    )
     axes[1].set_ylabel("Average Favorites")
     axes[1].set_xlabel("Role")
     axes[1].tick_params(axis="x", rotation=45)

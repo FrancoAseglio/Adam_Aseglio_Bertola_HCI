@@ -20,16 +20,13 @@ def studio_performance_analysis(
     - Left: Top studios by number of anime produced (prolific)
     - Right: Top studios by average score (quality)
     """
-    # Prepare data
     studio_analysis = prepare_studio_data(
         details_df, stats_df, min_anime_threshold=min_anime_threshold
     )
 
-    # Get top studios for each metric
     top_studios_count = studio_analysis.nlargest(top_n, "Count")
     top_studios_score = studio_analysis.nlargest(top_n, "Avg Score")
 
-    # Create visualization
     fig, axes = create_dual_horizontal_bar_chart(
         data_left=top_studios_count,
         data_right=top_studios_score,
