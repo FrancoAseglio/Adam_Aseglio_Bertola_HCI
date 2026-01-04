@@ -213,7 +213,8 @@ def genre_evolution_over_time(
                 "Anime Count: %{customdata[0]:,}<br>"
                 "<extra></extra>"
             ),
-        )
+        ),
+        include_groups=False,
     )
 
     fig.add_traces(traces.tolist())

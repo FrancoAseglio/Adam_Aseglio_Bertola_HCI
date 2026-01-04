@@ -64,4 +64,3 @@ def get_country_code(location):
     }
 
     return manual_mapping.get(location_str, (None, None))
-

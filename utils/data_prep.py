@@ -235,19 +235,15 @@ def fill_missing_years(df):
     Fill missing years for each genre to avoid line gaps using vectorized operations.
     Creates a full Cartesian product (All Years x All Genres) and merges data.
     """
-    
-    all_years = pd.DataFrame({
-        "year": range(int(df["year"].min()), int(df["year"].max()) + 1)
-    })
-    all_genres = pd.DataFrame({
-        "genres_list": df["genres_list"].unique()
-    })
+
+    all_years = pd.DataFrame(
+        {"year": range(int(df["year"].min()), int(df["year"].max()) + 1)}
+    )
+    all_genres = pd.DataFrame({"genres_list": df["genres_list"].unique()})
 
     full_grid = all_years.merge(all_genres, how="cross")
 
-    filled_df = full_grid.merge(
-        df, on=["year", "genres_list"], how="left"
-    )
+    filled_df = full_grid.merge(df, on=["year", "genres_list"], how="left")
 
     filled_df["popularity"] = filled_df["popularity"].fillna(0)
     filled_df["anime_count"] = filled_df["anime_count"].fillna(0).astype(int)
@@ -573,7 +569,7 @@ def prepare_persona_genre_data(active_users, favs_df, details_df, top_n=15):
         .nlargest(top_n)
         .index.tolist()
     )
-    
+
     persona_genre_filtered = persona_genre_counts[
         persona_genre_counts["genre"].isin(top_genres)
     ].copy()

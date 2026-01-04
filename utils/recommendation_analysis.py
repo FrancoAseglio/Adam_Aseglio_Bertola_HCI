@@ -56,13 +56,14 @@ def recommendation_genre_cooccurrence(
     )
 
     rec_exploded = (
-        rec_with_genres
-        .explode("genres_list_source")
+        rec_with_genres.explode("genres_list_source")
         .explode("genres_list_target")
-        .rename(columns={
-            "genres_list_source": "source_genre",
-            "genres_list_target": "target_genre"
-        })
+        .rename(
+            columns={
+                "genres_list_source": "source_genre",
+                "genres_list_target": "target_genre",
+            }
+        )
     )
 
     rec_exploded = rec_exploded[

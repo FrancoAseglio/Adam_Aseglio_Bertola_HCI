@@ -13,18 +13,13 @@ from .dev_utils import add_count_on_vertical_bars, add_count_on_horizontal_bars
 from .viz_components import create_dual_horizontal_bar_chart
 
 
-def expand_axis_limit(ax):
-        left, right = ax.get_xlim()
-        ax.set_xlim(left, right * 1.30)
-
-
 def voice_actor_character_popularity(
     characters_df,
     favs_df,
     person_voice_works_df,
     person_details_df,
     top_n=10,
-    character_threshold=0,
+    character_threshold=50,
     figsize=(16, 8),
 ):
     """
@@ -55,7 +50,7 @@ def voice_actor_character_popularity(
     matplotlib.figure.Figure, np.ndarray
         The figure object and an array containing the two subplots (axes).
     """
-    
+
     char_data = prepare_character_favorites(characters_df, favs_df)
 
     voice_char = person_voice_works_df.merge(
@@ -99,26 +94,79 @@ def voice_actor_character_popularity(
     )
 
     labels_left = (
-        top_by_total["total_character_favs"].map('{:,.0f}'.format)
-        + " (" 
-        + top_by_total["num_characters"].astype(str) 
+        top_by_total["total_character_favs"].map("{:,.0f}".format)
+        + " ("
+        + top_by_total["num_characters"].astype(str)
         + " roles)"
     ).values
 
     labels_right = (
-        top_by_avg["avg_character_favs"].map('{:,.0f}'.format)
-        + " (" 
-        + top_by_avg["num_characters"].astype(str) 
+        top_by_avg["avg_character_favs"].map("{:.1f}".format)
+        + " ("
+        + top_by_avg["num_characters"].astype(str)
         + " roles)"
     ).values
 
     add_count_on_horizontal_bars(axes[0], custom_labels=labels_left)
     add_count_on_horizontal_bars(axes[1], custom_labels=labels_right)
 
-    list(map(expand_axis_limit, axes))
+    return fig, axes
 
-    fig.subplots_adjust(wspace=0.3)
 
+def character_popularity_by_role(
+    characters_df, favs_df, character_anime_works_df, figsize=(14, 5)
+):
+    """
+    Analyze and visualize character popularity based on their role in anime.
+
+    Parameters
+    ----------
+    characters_df : pd.DataFrame
+    favs_df : pd.DataFrame
+    character_anime_works_df : pd.DataFrame
+    figsize : tuple, default=(14, 5)
+
+    Returns
+    -------
+    matplotlib.figure.Figure, matplotlib.axes.Axes
+    """
+    char_data = prepare_character_favorites(characters_df, favs_df)
+
+    char_roles = character_anime_works_df.merge(
+        char_data, on="character_mal_id", how="inner"
+    )
+
+    role_analysis = (
+        char_roles.groupby("role")
+        .agg({"total_favs": "mean", "character_mal_id": "count"})
+        .round(2)
+    )
+    role_analysis.columns = ["Avg Favorites", "Count"]
+    role_analysis = role_analysis.sort_values("Avg Favorites", ascending=False)
+
+    fig, axes = plt.subplots(1, 2, figsize=figsize)
+
+    role_analysis["Count"].plot(kind="bar", ax=axes[0], color=["#FF6B6B", "#4ECDC4"])
+    axes[0].set_title("Characters Count by Role", fontsize=12, fontweight="bold")
+    axes[0].set_ylabel("Character Count")
+    axes[0].set_xlabel("Role")
+    axes[0].tick_params(axis="x", rotation=45)
+    axes[0].grid(axis="y", alpha=0.5, linestyle="--")
+    add_count_on_vertical_bars(axes[0])
+
+    role_analysis["Avg Favorites"].plot(
+        kind="bar", ax=axes[1], color=["#FF6B6B", "#4ECDC4"]
+    )
+    axes[1].set_title(
+        "Average Favorites by Character Role", fontsize=12, fontweight="bold"
+    )
+    axes[1].set_ylabel("Average Favorites")
+    axes[1].set_xlabel("Role")
+    axes[1].tick_params(axis="x", rotation=45)
+    axes[1].grid(axis="y", alpha=0.5, linestyle="--")
+    add_count_on_vertical_bars(axes[1])
+
+    plt.tight_layout()
     return fig, axes
 
 
@@ -181,8 +229,8 @@ def character_popularity_by_genre_bars(
                 showscale=True,
                 colorbar=dict(title="Character<br>Count"),
             ),
-            text = plot_df["Avg Favorites"],
-            texttemplate = '%{text:,.0f}',
+            text=plot_df["Avg Favorites"],
+            texttemplate="%{text:,.0f}",
             textposition="outside",
             hovertemplate=(
                 "<b>%{y}</b><br>"

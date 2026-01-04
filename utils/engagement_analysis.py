@@ -98,7 +98,7 @@ def completion_dropout_by_episode_count(
             name=row["label"],
             marker=dict(color=colors[row["label"]]),
             text=stats[row["col"]],
-            texttemplate='%{text:.1f}%',
+            texttemplate="%{text:.1f}%",
             textposition="outside",
             hovertemplate=(
                 "<b>%{x}</b><br>"
@@ -133,7 +133,6 @@ def completion_dropout_by_episode_count(
         yaxis=dict(range=[0, max_val * 1.15]),
     )
     return fig
-
 
 
 def completion_dropout_by_type(

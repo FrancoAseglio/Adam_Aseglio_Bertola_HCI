@@ -43,7 +43,7 @@ def studio_performance_analysis(
         colormap_left="magma",
         colormap_right="viridis",
     )
-    
+
     add_count_on_horizontal_bars(axes[0])
     add_count_on_horizontal_bars(axes[1], fmt="{:.2f}")
 

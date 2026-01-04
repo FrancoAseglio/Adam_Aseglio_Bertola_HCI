@@ -34,25 +34,25 @@ def viewing_status_distribution(stats_df, figsize=(12, 8)):
         The figure and axes objects containing the ring chart.
     """
     status_df = prepare_viewing_status_data(stats_df)
-    
-    status_df['status_label'] = (
-        status_df['status']
-        .astype(str)
-        .str.replace('_', ' ')
-        .str.title()
+
+    status_df["status_label"] = (
+        status_df["status"].astype(str).str.replace("_", " ").str.title()
     )
 
     return create_ring_chart(
         data=status_df,
-        value_col='count',
-        label_col='status_label',
+        value_col="count",
+        label_col="status_label",
         title="Viewing Status Distribution",
         figsize=figsize,
         center_text="Total Interactions",
-        percent_threshold=1 
+        percent_threshold=1,
     )
 
-def genre_preferences_by_persona(profiles_df, favs_df, details_df, min_anime=10, top_n=15, figsize=(10, 8)):
+
+def genre_preferences_by_persona(
+    profiles_df, favs_df, details_df, min_anime=10, top_n=15, figsize=(10, 8)
+):
     """
     Analyze and visualize genre preferences by fan persona.
 
@@ -81,7 +81,9 @@ def genre_preferences_by_persona(profiles_df, favs_df, details_df, min_anime=10,
     """
     active_users = prepare_active_users_with_personas(profiles_df, min_anime=min_anime)
 
-    heatmap_data = prepare_persona_genre_data(active_users, favs_df, details_df, top_n=top_n)
+    heatmap_data = prepare_persona_genre_data(
+        active_users, favs_df, details_df, top_n=top_n
+    )
 
     fig, ax = create_heatmap(
         data=heatmap_data,

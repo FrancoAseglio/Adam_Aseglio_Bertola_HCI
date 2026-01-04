@@ -99,7 +99,7 @@ def create_grouped_bar_chart(
             name=row["label"],
             marker=dict(color=row["color"]),
             text=data[row["y_col"]],
-            texttemplate='%{text:.1f}%',
+            texttemplate="%{text:.1f}%",
             textposition="outside",
             hovertemplate=row["hover_template"],
             customdata=customdata,
@@ -205,9 +205,7 @@ def create_horizontal_bar_chart(
 
         s_vals = pd.Series(values)
         labels = np.where(
-            values >= 1000,
-            s_vals.map('{:,.0f}'.format),
-            s_vals.map('{:.1f}'.format)
+            values >= 1000, s_vals.map("{:,.0f}".format), s_vals.map("{:.1f}".format)
         )
         ax.bar_label(bars, labels=labels, padding=3, fontsize=10, fontweight="bold")
 
@@ -309,12 +307,12 @@ def create_dual_bar_chart(
         ax.bar_label(ax.containers[0], labels=labels, padding=3)
 
         ax.bar_label(
-            ax.containers[0], 
-            labels=labels, 
+            ax.containers[0],
+            labels=labels,
             padding=3,
             fontsize=9,
             fontweight="bold",
-            color="black"
+            color="black",
         )
 
         idx = config["idx"]
@@ -643,7 +641,7 @@ def update_autotext(autotext, content, fontsize):
     """
     Updates the text content and font size of a Matplotlib text object.
 
-    This function acts as a helper within a map() call to avoid explicit 
+    This function acts as a helper within a map() call to avoid explicit
     for-loops or complex lambdas.
 
     Parameters
@@ -712,7 +710,7 @@ def create_ring_chart(
 
     percentages = (values / total_val * 100).values
 
-    existing_text = pd.Series(percentages).map('{:.1f}%'.format).values
+    existing_text = pd.Series(percentages).map("{:.1f}%".format).values
 
     text_content = np.where(percentages < percent_threshold, "", existing_text)
     font_sizes = np.where(

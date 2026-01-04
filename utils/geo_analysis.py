@@ -60,7 +60,7 @@ def create_animated_map(profiles_df):
     )
 
     tick_vals = np.arange(min_exponent, max_exponent + 1).tolist()
-    tick_text = ("10^" + pd.Series(tick_vals).astype(str)).tolist() 
+    tick_text = ("10^" + pd.Series(tick_vals).astype(str)).tolist()
 
     fig.update_layout(
         height=600,
