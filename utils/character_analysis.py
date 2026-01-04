@@ -122,12 +122,6 @@ def voice_actor_character_popularity(
     return fig, axes
 
 
-## What makes a character resonate the most with audience?
-
-We can simply begin by taking a look at the influence of their role. If any...
-
-
-
 def character_popularity_by_genre_bars(
     characters_df,
     favs_df,
