@@ -110,6 +110,12 @@ def voice_actor_character_popularity(
     add_count_on_horizontal_bars(axes[0], custom_labels=labels_left)
     add_count_on_horizontal_bars(axes[1], custom_labels=labels_right)
 
+    max_val_left = top_by_total["total_character_favs"].max()
+    axes[0].set_xlim(0, max_val_left * 1.5)
+    
+    max_val_right = top_by_avg["avg_character_favs"].max()
+    axes[1].set_xlim(0, max_val_right * 1.5)
+
     return fig, axes
 
 
