@@ -21,13 +21,13 @@ This project implements a complete data analysis pipeline that:
 
 ```
 .
-├── notebooks/          # Jupyter notebooks for each task
-├── poetry.lock         # Poetry dependency management
-├── pyproject.toml      # Poetry configuration
+├── docs/            # Documentation materials
+├── notebooks/       # Jupyter notebooks for each task
+├── poetry.lock      # Poetry dependency management
+├── pyproject.toml   # Poetry configuration
 ├── README.md
-├── report/             # Documentation
-├── requirements.txt    # Python dependencies
-└── utils/              # Custom utility functions and modules
+├── requirements.txt # Python dependencies
+└── utils/           # Custom utility functions and modules
 ```
 
 ## Prerequisites
