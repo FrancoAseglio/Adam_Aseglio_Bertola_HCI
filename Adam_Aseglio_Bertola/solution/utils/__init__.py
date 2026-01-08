@@ -3,8 +3,14 @@ Anime Analysis Utilities Package
 =================================
 """
 
-from .graphs_utils import (
-    clear_cache,
+from .dev_utils import (
+    add_count_on_vertical_bars,
+    add_count_on_horizontal_bars,
+    parse_list,
+)
+
+from .geo_utils import (
+    get_country_code,
 )
 
 from .data_prep import (
@@ -13,6 +19,35 @@ from .data_prep import (
     explode_genres,
     bin_episodes,
     prepare_completion_drop_data,
+    prepare_studio_data,
+    prepare_episode_score_data,
+    aggregate_by_dimension,
+    fill_missing_years,
+    prepare_country_data,
+    prepare_viewing_status_data,
+    prepare_active_users_with_personas,
+    prepare_persona_genre_data,
+)
+
+from .dev_utils import (
+    add_count_on_vertical_bars,
+    add_count_on_horizontal_bars,
+    parse_list,
+)
+
+from .geo_utils import (
+    get_country_code,
+)
+
+from .viz_components import (
+    create_dual_line_distribution,
+    create_dual_horizontal_bar_chart,
+    create_grouped_bar_chart,
+    create_horizontal_bar_chart,
+    create_dual_bar_chart,
+    create_hexbin_violin_plot,
+    create_heatmap,
+    create_ring_chart,
 )
 
 from .studio_analysis import (
@@ -56,8 +91,8 @@ from .recommendation_analysis import (
     recommendation_type_patterns,
 )
 
-from .viz_components import (
-    create_dual_line_distribution,
+from .graphs_utils import (
+    clear_cache,
 )
 
 
@@ -75,15 +110,34 @@ __all__ = [
     "completion_dropout_by_genre",
     "completion_dropout_by_episode_count",
     "completion_dropout_distribution",
-    "prepare_engagement_data",
-    "prepare_character_favorites",
-    "explode_genres",
-    "bin_episodes",
-    "prepare_completion_drop_data",
-    "create_dual_line_distribution",
     "create_animated_map",
     "recommendation_genre_cooccurrence",
     "recommendation_type_patterns",
     "viewing_status_distribution",
     "genre_preferences_by_persona",
+    "prepare_engagement_data",
+    "prepare_character_favorites",
+    "explode_genres",
+    "bin_episodes",
+    "prepare_completion_drop_data",
+    "prepare_studio_data",
+    "prepare_episode_score_data",
+    "aggregate_by_dimension",
+    "fill_missing_years",
+    "prepare_country_data",
+    "prepare_viewing_status_data",
+    "prepare_active_users_with_personas",
+    "prepare_persona_genre_data",
+    "add_count_on_vertical_bars",
+    "add_count_on_horizontal_bars",
+    "parse_list",
+    "get_country_code",
+    "create_dual_line_distribution",
+    "create_dual_horizontal_bar_chart",
+    "create_grouped_bar_chart",
+    "create_horizontal_bar_chart",
+    "create_dual_bar_chart",
+    "create_hexbin_violin_plot",
+    "create_heatmap",
+    "create_ring_chart",
 ]

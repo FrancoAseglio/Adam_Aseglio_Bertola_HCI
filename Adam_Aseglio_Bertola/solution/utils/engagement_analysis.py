@@ -9,12 +9,9 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 
-from .viz_components import (
+from . import (
     create_grouped_bar_chart,
     create_dual_line_distribution,
-)
-
-from .data_prep import (
     prepare_engagement_data,
     explode_genres,
     aggregate_by_dimension,

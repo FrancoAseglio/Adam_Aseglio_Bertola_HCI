@@ -5,8 +5,12 @@ Episode Analysis Functions
 Analysis of anime distribution and scores by episode count.
 """
 
-from .data_prep import prepare_episode_score_data, aggregate_by_dimension
-from .viz_components import create_dual_bar_chart, create_hexbin_violin_plot
+from . import (
+    prepare_episode_score_data,
+    aggregate_by_dimension,
+    create_dual_bar_chart,
+    create_hexbin_violin_plot,
+)
 
 
 def anime_episode_range_analysis(

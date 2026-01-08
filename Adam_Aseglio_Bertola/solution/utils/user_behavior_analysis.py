@@ -5,13 +5,10 @@ User Behavior Analysis Functions
 Analysis of user viewing patterns, completion/dropout behavior, and persona-based preferences.
 """
 
-from .data_prep import (
+from . import (
     prepare_viewing_status_data,
     prepare_active_users_with_personas,
     prepare_persona_genre_data,
-)
-
-from .viz_components import (
     create_heatmap,
     create_ring_chart,
 )

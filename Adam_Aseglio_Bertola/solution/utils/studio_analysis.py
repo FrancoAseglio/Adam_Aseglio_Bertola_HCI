@@ -5,9 +5,11 @@ Studio Analysis Functions
 Studio productivity and quality analysis.
 """
 
-from .data_prep import prepare_studio_data
-from .dev_utils import add_count_on_horizontal_bars
-from .viz_components import create_dual_horizontal_bar_chart
+from . import (
+    prepare_studio_data,
+    add_count_on_horizontal_bars,
+    create_dual_horizontal_bar_chart,
+)
 
 
 def studio_performance_analysis(

@@ -10,7 +10,9 @@ import numpy as np
 import math as math
 import plotly.express as px
 
-from .data_prep import prepare_country_data
+from . import (
+    prepare_country_data,
+)
 
 
 def create_animated_map(profiles_df):

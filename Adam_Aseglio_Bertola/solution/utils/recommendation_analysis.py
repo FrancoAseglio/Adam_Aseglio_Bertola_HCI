@@ -12,7 +12,9 @@ import plotly.graph_objects as go
 from scipy.cluster.hierarchy import linkage, dendrogram
 from scipy.spatial.distance import squareform
 
-from .data_prep import explode_genres
+from . import (
+    explode_genres,
+)
 
 
 def recommendation_genre_cooccurrence(

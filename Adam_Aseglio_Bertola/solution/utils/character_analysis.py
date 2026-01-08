@@ -8,9 +8,13 @@ Character popularity and voice actor analysis.
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 
-from .data_prep import prepare_character_favorites, explode_genres
-from .dev_utils import add_count_on_vertical_bars, add_count_on_horizontal_bars
-from .viz_components import create_dual_horizontal_bar_chart
+from . import (
+    prepare_character_favorites,
+    explode_genres,
+    add_count_on_vertical_bars,
+    add_count_on_horizontal_bars,
+    create_dual_horizontal_bar_chart,
+)
 
 
 def voice_actor_character_popularity(

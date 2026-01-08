@@ -10,8 +10,11 @@ import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 import plotly.express as px
 
-from .data_prep import explode_genres, fill_missing_years
-from .viz_components import create_horizontal_bar_chart
+from . import (
+    explode_genres,
+    fill_missing_years,
+    create_horizontal_bar_chart,
+)
 
 
 def genre_comparison_watched_vs_liked(
