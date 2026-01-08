@@ -20,14 +20,19 @@ This project implements a complete data analysis pipeline that:
 ## Project Structure
 
 ```
+
 .
-├── docs/            # Documentation materials
-├── notebooks/       # Jupyter notebooks for each task
-├── poetry.lock      # Poetry dependency management
-├── pyproject.toml   # Poetry configuration
-├── README.md
-├── requirements.txt # Python dependencies
-└── utils/           # Custom utility functions and modules
+└── Adam_Aseglio_Bertola
+     ├── README.md
+     ├── report
+     │    └── report.pdf        # Documentation
+     └── solution
+          ├── notebooks         # Jupyter notebooks for each task
+          ├── poetry.lock       # Poetry dependency management
+          ├── pyproject.toml    # Poetry configuration
+          ├── requirements.txt  # Python dependencies
+          └── utils             # Custom utility functions and modules
+
 ```
 
 ## Prerequisites
