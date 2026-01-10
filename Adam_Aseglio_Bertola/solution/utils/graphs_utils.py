@@ -77,15 +77,6 @@ def _load_data():
 
     FILE_EXTENSION = ".csv"
 
-    rating_dtypes = {
-        'username': 'object',
-        'anime_id': 'int32',
-        'status': 'category',
-        'score': 'int8',
-        'is_rewatching': 'float32',
-        'num_watched_episodes': 'int32'
-    }
-
     dataset_names = np.array([
         'character_anime_works_df', 'character_nicknames_df', 'characters_df',
         'details_df', 'favs_df', 'person_alternate_names_df',
@@ -98,7 +89,7 @@ def _load_data():
         try:
             filename = dataset_name.replace('_df', '_clean') + FILE_EXTENSION
             file_path = INPUT_DIR_PATH / filename
-            df = pd.read_csv(file_path, dtype=rating_dtypes if dataset_name == 'ratings_df' else None)
+            df = pd.read_csv(file_path)
             df_downcast = downcast_df(df)
             return df_downcast
         except FileNotFoundError:
