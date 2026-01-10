@@ -5,6 +5,7 @@ Anime Analysis - Main API
 High-level wrapper functions that load data and call analysis functions.
 """
 
+import numpy as np
 import pandas as pd
 from pathlib import Path
 
@@ -55,11 +56,18 @@ from .user_behavior_analysis import (
 # DATA LOADING (Module-level cache)
 # ========================================
 
+
 _DATA_CACHE = {}
 
 
 def _load_data():
-    """Load all datasets once and cache them."""
+    """
+    Load all datasets once and cache them.
+    Returns
+    -------
+    _DATA_CACHE : dict
+        Dictionary with dataset names as keys and DataFrames as values
+    """
     if _DATA_CACHE:
         return _DATA_CACHE
 
@@ -69,18 +77,42 @@ def _load_data():
 
     FILE_EXTENSION = ".csv"
 
-    _DATA_CACHE["character_anime_works_df"] = downcast_df(pd.read_csv(INPUT_DIR_PATH / f"character_anime_works_clean{FILE_EXTENSION}"))
-    _DATA_CACHE["character_nicknames_df"] =downcast_df(pd.read_csv(INPUT_DIR_PATH / f"character_nicknames_clean{FILE_EXTENSION}"))
-    _DATA_CACHE["characters_df"] = downcast_df(pd.read_csv(INPUT_DIR_PATH / f"characters_clean{FILE_EXTENSION}"))
-    _DATA_CACHE["details_df"] = downcast_df(pd.read_csv(INPUT_DIR_PATH / f"details_clean{FILE_EXTENSION}"))
-    _DATA_CACHE["favs_df"] = downcast_df(pd.read_csv(INPUT_DIR_PATH / f"favs_clean{FILE_EXTENSION}"))
-    _DATA_CACHE["person_alternate_names_df"] = downcast_df(pd.read_csv(INPUT_DIR_PATH / f"person_alternate_names_clean{FILE_EXTENSION}"))
-    _DATA_CACHE["person_anime_works_df"] = downcast_df(pd.read_csv(INPUT_DIR_PATH / f"person_anime_works_clean{FILE_EXTENSION}"))
-    _DATA_CACHE["person_details_df"] = downcast_df(pd.read_csv(INPUT_DIR_PATH / f"person_details_clean{FILE_EXTENSION}"))
-    _DATA_CACHE["person_voice_works_df"] = downcast_df(pd.read_csv(INPUT_DIR_PATH / f"person_voice_works_clean{FILE_EXTENSION}"))
-    _DATA_CACHE["profiles_df"] = downcast_df(pd.read_csv(INPUT_DIR_PATH / f"profiles_clean{FILE_EXTENSION}"))
-    _DATA_CACHE["recommendations_df"] = downcast_df(pd.read_csv(INPUT_DIR_PATH / f"recommendations_clean{FILE_EXTENSION}"))
-    _DATA_CACHE["stats_df"] = downcast_df(pd.read_csv(INPUT_DIR_PATH / f"stats_clean{FILE_EXTENSION}"))
+    rating_dtypes = {
+        'username': 'object',
+        'anime_id': 'int32',
+        'status': 'category',
+        'score': 'int8',
+        'is_rewatching': 'float32',
+        'num_watched_episodes': 'int32'
+    }
+
+    dataset_names = np.array([
+        'character_anime_works_df', 'character_nicknames_df', 'characters_df',
+        'details_df', 'favs_df', 'person_alternate_names_df',
+        'person_anime_works_df', 'person_details_df', 'person_voice_works_df',
+        'profiles_df', 'recommendations_df', 'stats_df'
+    ])
+
+    def load_dataset(dataset_name):
+        """Load a single dataset with error handling."""
+        try:
+            filename = dataset_name.replace('_df', '_clean') + FILE_EXTENSION
+            file_path = INPUT_DIR_PATH / filename
+            df = pd.read_csv(file_path, dtype=rating_dtypes if dataset_name == 'ratings_df' else None)
+            df_downcast = downcast_df(df)
+            return df_downcast
+        except FileNotFoundError:
+            print(f"{dataset_name}: File not found at {file_path}")
+            return None
+        except pd.errors.EmptyDataError:
+            print(f"{dataset_name}: File is empty")
+            return None
+        except Exception as e:
+            print(f"{dataset_name}: Error loading - {str(e)}")
+            return None
+
+    datasets = dict(zip(dataset_names, map(load_dataset, dataset_names)))
+    _DATA_CACHE.update(datasets)
 
     return _DATA_CACHE
 
