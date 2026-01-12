@@ -21,17 +21,17 @@ This project implements a complete data analysis pipeline that:
 
 ```
 
-.
-└── Adam_Aseglio_Bertola
-     ├── README.md
-     ├── report
-     │    └── report.pdf        # Documentation
-     └── solution
-          ├── notebooks         # Jupyter notebooks for each task
-          ├── poetry.lock       # Poetry dependency management
-          ├── pyproject.toml    # Poetry configuration
-          ├── requirements.txt  # Python dependencies
-          └── utils             # Custom utility functions and modules
+.Adam_Aseglio_Bertola_HCI
+  ├── README.md
+  ├── SelfAssessmentForm-HCI.xlsx
+  ├── report
+  │    └── report.pdf        # Documentation
+  └── solution
+       ├── notebooks         # Jupyter notebooks for each task
+       ├── poetry.lock       # Poetry dependency management
+       ├── pyproject.toml    # Poetry configuration
+       ├── requirements.txt  # Python dependencies
+       └── utils             # Custom utility functions and modules
 
 ```
 
@@ -84,7 +84,7 @@ Comprehensive overview of 13 MAL datasets including:
 Intelligent cleaning pipeline that:  
 - Preserves data volume while ensuring relational integrity  
 - Removes duplicates and handles missing values surgically  
-- Exports cleaned datasets (default is `~/data/cleaned/`)
+- Exports cleaned datasets (default is `~/datasets/cleaned/`)
 
 ### Step 3: Data Visualization
 Multi-dimensional exploration answering:  
