@@ -36,7 +36,6 @@ poetry.lock  # Consider: commit this for reproducibility
 
 # Data files (adjust based on your needs)
 *.csv
-*.xlsx
 *.parquet
 *.db
 *.sqlite
